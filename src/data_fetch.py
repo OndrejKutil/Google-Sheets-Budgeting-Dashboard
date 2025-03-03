@@ -146,20 +146,32 @@ def get_transactions(spreadsheet_name: str, worksheet_name: str) -> list:
         
         # Use retry-enabled fetch function
         all_values = _fetch_from_sheets(client, spreadsheet_name, worksheet_name)
+        
+        if not all_values:
+            return []
 
-        headers = all_values[2][1:]
-        data = [row[1:] for row in all_values[4:] if len(row) > 1]  # Skip rows that are too short
+        headers = all_values[0]  # First row contains headers
+        data = all_values[1:]    # Rest is data
         transactions = []
         
         for row in data:
             if len(row) == len(headers):  # Only process rows with correct number of columns
                 transaction = dict(zip(headers, row))
-                # Ensure required fields exist
-                transaction.setdefault('VALUE', '0')
-                transaction.setdefault('TYPE', '')  # Add default empty type
+                
+                # Clean and validate VALUE field
+                value = transaction.get('VALUE', '').strip()
+                if value == '':
+                    value = '0'
+                # Remove any currency symbols or separators
+                value = value.replace('Kč', '').replace(',', '').replace(' ', '')
+                transaction['VALUE'] = value
+                
+                # Ensure other required fields exist with default values
+                transaction.setdefault('TYPE', '')
                 transaction.setdefault('CATEGORY', '')
                 transaction.setdefault('MONTH', '')
                 transaction.setdefault('DESCRIPTION', '')
+                
                 transactions.append(transaction)
 
         # Store in cache
@@ -168,7 +180,6 @@ def get_transactions(spreadsheet_name: str, worksheet_name: str) -> list:
 
     except Exception as e:
         print(f"Failed to fetch transactions after {MAX_RETRIES} attempts: {str(e)}")
-        # Return empty list instead of raising to prevent dashboard crashes
         return []
 
 def get_worksheet(spreadsheet_name: str, worksheet_name: str, 

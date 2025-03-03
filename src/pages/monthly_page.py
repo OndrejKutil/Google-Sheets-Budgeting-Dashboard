@@ -1,248 +1,376 @@
-import dash_bootstrap_components as dbc
 from dash import html, dcc, callback, Input, Output
+import dash_bootstrap_components as dbc
+import plotly.graph_objects as go
 import plotly.express as px
 import pandas as pd
 from data_fetch import get_transactions
 from get_categories import get_all_categories_api
 from analysis import sum_values_by_criteria, sum_expenses_by_category, calculate_expense_ratio
+from functools import lru_cache
 
-"""Monthly overview page showing detailed statistics for a selected month."""
+# Theme configuration
+THEME = {
+    'colors': {
+        'income': '#2ECC71',     # Green
+        'expenses': '#E74C3C',   # Red
+        'savings': '#3498DB',    # Blue
+        'investments': '#9B59B6', # Purple
+        'background': '#2d2d2d',
+        'surface': '#1a1a1a',
+        'text': '#ffffff',
+        'muted': '#adb5bd',
+        'dropdown': {
+            'background': '#1a1a1a',
+            'text': '#ffffff',
+            'selected': '#2d2d2d'
+        }
+    },
+    'chart': {
+        'bgcolor': 'rgba(0,0,0,0)',
+        'gridcolor': 'rgba(255,255,255,0.1)',
+        'height': 400
+    }
+}
+
+# Update dropdown styles with better contrast and proper Dash dropdown syntax
+DROPDOWN_STYLES = {
+    'backgroundColor': THEME['colors']['dropdown']['background'],
+    'color': '#000000',  # Black text
+    'border': '1px solid #404040',
+    'borderRadius': '4px',
+    'option': {
+        'color': '#000000',  # Black text for options
+        'backgroundColor': THEME['colors']['dropdown']['background'],
+    }
+}
+
+# Component styles
+CARD_STYLE = {
+    'backgroundColor': THEME['colors']['background'],
+    'borderRadius': '10px',
+    'boxShadow': '0 4px 6px rgba(0, 0, 0, 0.1)',
+    'padding': '20px',
+    'height': '100%'
+}
+
+# Layout components
+def create_stat_card(title, value="", color="income", id=None):
+    """Create a styled metric card with optional ID."""
+    return dbc.Card([
+        dbc.CardBody([
+            html.H6(title, style={'color': THEME['colors']['muted'], 'fontSize': '0.9rem'}),
+            html.H3(value, id=id, style={
+                'color': THEME['colors'][color],
+                'fontSize': '1.8rem',
+                'fontWeight': 'bold'
+            })
+        ])
+    ], style=CARD_STYLE)
+
+def create_top_expenses_table(df):
+    """Create styled top expenses table."""
+    if df.empty:
+        return html.Div("No expenses recorded", style={'color': THEME['colors']['muted']})
+    
+    return dbc.Table([
+        html.Thead(html.Tr([
+            html.Th("Category"),
+            html.Th("Amount", style={'textAlign': 'right'})
+        ]), style={'backgroundColor': THEME['colors']['surface']}),
+        html.Tbody([
+            html.Tr([
+                html.Td(row['CATEGORY']),
+                html.Td(f"{abs(row['VALUE_NUMERIC']):,.0f} Kč", 
+                       style={'textAlign': 'right', 'color': THEME['colors']['expenses']})
+            ], style={'backgroundColor': THEME['colors']['surface'] if i % 2 else THEME['colors']['background']})
+            for i, (_, row) in enumerate(df.iterrows())
+        ])
+    ], bordered=True, dark=True, hover=True)
 
 layout = dbc.Container([
-    html.H1("Monthly Overview", className="my-4"),
+    # Month selector with fixed styling
     dbc.Row([
         dbc.Col([
             dbc.Card([
                 dbc.CardBody([
-                    html.H4("Month Selection", className="text-center mb-3"),
-                    dcc.Dropdown(
-                        id='month-selector',
-                        options=[
-                            {'label': month, 'value': month} for month in [
-                                'January', 'February', 'March', 'April', 'May', 'June',
-                                'July', 'August', 'September', 'October', 'November', 'December'
-                            ]
-                        ],
-                        value='January',
-                        clearable=False,
-                        className="mb-3",
-                        style={'color': '#000', 'backgroundColor': '#FFF'}
-                    ),
-                    dbc.Button(
-                        "Update Overview",
-                        id="update-monthly-button",
-                        color="primary",
-                        className="w-100"
-                    )
+                    html.H4("Monthly Overview", className="text-center",
+                           style={'color': THEME['colors']['text'], 'marginBottom': '20px'}),
+                    dbc.Row([
+                        dbc.Col(
+                            html.Div([
+                                dcc.Dropdown(
+                                    id='month-selector',
+                                    options=[{'label': m, 'value': m} for m in [
+                                        'January', 'February', 'March', 'April', 'May', 'June',
+                                        'July', 'August', 'September', 'October', 'November', 'December'
+                                    ]],
+                                    value='January',
+                                    style=DROPDOWN_STYLES,
+                                    className='dash-dark-dropdown'
+                                )
+                            ], style={'color': THEME['colors']['text']})
+                        , width=10),
+                        dbc.Col(dbc.Button("Update", id="update-button", color="primary"), width=2)
+                    ])
                 ])
-            ], className="mb-4")
+            ], style=CARD_STYLE)
         ])
-    ]),
+    ], className="mb-4"),
+    
+    # Statistics cards
+    dbc.Row([
+        dbc.Col([
+            create_stat_card(
+                title="Income",
+                color="income",
+                id="income-value"
+            )
+        ], width=3),
+        dbc.Col([
+            create_stat_card(
+                title="Expenses",
+                color="expenses",
+                id="expenses-value"
+            )
+        ], width=3),
+        dbc.Col([
+            create_stat_card(
+                title="Net Income",
+                color="savings",
+                id="net-income-value"
+            )
+        ], width=3),
+        dbc.Col([
+            create_stat_card(
+                title="Expense Ratio",
+                color="expenses",
+                id="expense-ratio-value"
+            )
+        ], width=3)
+    ], className="mb-4"),
+    
+    # Charts
     dbc.Row([
         dbc.Col([
             dbc.Card([
                 dbc.CardBody([
-                    html.H4("Monthly Statistics", className="text-center mb-4"),
-                    dbc.Spinner(html.Div(id="monthly-stats")),
+                    html.H5("Income vs Expenses", className="text-center mb-4",
+                           style={'color': THEME['colors']['text']}),
+                    dcc.Graph(id='monthly-comparison')
                 ])
-            ], className="h-100")
-        ], md=5),  # Changed from md=4 to md=5
+            ], style=CARD_STYLE)
+        ], md=6),
         dbc.Col([
             dbc.Card([
                 dbc.CardBody([
-                    html.H4("Category Breakdown", className="text-center mb-4"),
-                    dbc.Spinner(
-                        dcc.Graph(id='monthly-category-chart', figure={})
-                    )
+                    html.H5("Expense Distribution", className="text-center mb-4",
+                           style={'color': THEME['colors']['text']}),
+                    dcc.Graph(id='expense-distribution')
                 ])
-            ], className="h-100")
-        ], md=7)  # Changed from md=8 to md=7
-    ]),
+            ], style=CARD_STYLE)
+        ], md=6)
+    ], className="mb-4"),
+    
+    # Bottom row
     dbc.Row([
         dbc.Col([
             dbc.Card([
                 dbc.CardBody([
-                    html.H4("Top Expenses", className="text-center mb-4"),
-                    dbc.Spinner(html.Div(id="monthly-top-expenses")),
+                    html.H5("Daily Expenses", className="text-center mb-4",
+                           style={'color': THEME['colors']['text']}),
+                    dcc.Graph(id='daily-expenses')
                 ])
-            ], className="mt-4")
-        ])
+            ], style=CARD_STYLE)
+        ], md=8),
+        dbc.Col([
+            dbc.Card([
+                dbc.CardBody([
+                    html.H5("Top Expenses", className="text-center mb-4",
+                           style={'color': THEME['colors']['text']}),
+                    html.Div(id='top-expenses')
+                ])
+            ], style=CARD_STYLE)
+        ], md=4)
     ])
-])
-
-def empty_chart(message="No data available") -> dict:
-    """Create an empty chart placeholder with custom message.
-
-    Args:
-        message: Text to display in empty chart area
-
-    Returns:
-        dict: Plotly figure with centered message
-    """
-    return {
-        'data': [],
-        'layout': {
-            'annotations': [{
-                'text': message,
-                'xref': 'paper',
-                'yref': 'paper',
-                'showarrow': False,
-                'font': {'size': 20}
-            }],
-            'height': 400
-        }
-    }
-
-def no_data_message() -> html.Div:
-    """Create a standardized no-data message component."""
-    return html.Div("No data available", className="text-muted text-center")
+], fluid=True)
 
 @callback(
-    [Output('monthly-stats', 'children'),
-     Output('monthly-category-chart', 'figure'),
-     Output('monthly-top-expenses', 'children')],
-    [Input('month-selector', 'value'),
-     Input('update-monthly-button', 'n_clicks')]
+    [Output('income-value', 'children'),
+     Output('expenses-value', 'children'),
+     Output('net-income-value', 'children'),
+     Output('expense-ratio-value', 'children'),
+     Output('monthly-comparison', 'figure'),
+     Output('expense-distribution', 'figure'),
+     Output('daily-expenses', 'figure'),
+     Output('top-expenses', 'children')],
+    [Input('month-selector', 'value')]
 )
-def update_monthly_view(selected_month: str, n_clicks: int) -> tuple:
-    """Update all components of the monthly view based on selected month.
-    
-    Creates three main components:
-    1. Statistics panel showing income, expenses, savings and ratios
-    2. Pie chart showing expense distribution by category
-    3. Table showing top 5 expenses for the month
-
-    Args:
-        selected_month: Name of selected month
-        n_clicks: Button click counter (not used directly)
-
-    Returns:
-        tuple: (stats_component, pie_chart, expenses_table)
-    """
-    if not selected_month:
-        return no_data_message(), {}, no_data_message()
-    
+def update_dashboard(selected_month):
+    """Update all dashboard components."""
     try:
-        SPREADSHEET_NAME = "Budget tracker 2025"
-        df = pd.DataFrame(get_transactions(SPREADSHEET_NAME, "transactions"))
-        # Filter out excluded transactions
+        # Fetch and process data
+        df = pd.DataFrame(get_transactions("Budget tracker 2025", "transactions"))
         df = df[df['TYPE'] != 'exclude']
-        income_cats, expense_cats, saving_cats, investing_cats = get_all_categories_api(SPREADSHEET_NAME)
+        df['VALUE_NUMERIC'] = pd.to_numeric(df['VALUE'].str.replace('Kč', '').str.replace(',', ''))
         
-        # Calculate monthly statistics
-        month_income = sum_values_by_criteria(df, 'VALUE', CATEGORY=income_cats, MONTH=selected_month)
-        month_expenses = abs(sum_values_by_criteria(df, 'VALUE', CATEGORY=expense_cats, MONTH=selected_month))
-        month_savings = abs(sum_values_by_criteria(df, 'VALUE', CATEGORY=saving_cats, MONTH=selected_month))
-        month_investments = abs(sum_values_by_criteria(df, 'VALUE', CATEGORY=investing_cats, MONTH=selected_month))
-        net_income = month_income - month_expenses
-        expense_ratio = calculate_expense_ratio(df, income_cats, expense_cats, month=selected_month)
+        # Get monthly data
+        month_data = df[df['MONTH'] == selected_month].copy()
+        income_cats, expense_cats, saving_cats, investing_cats = get_all_categories_api("Budget tracker 2025")
         
-        # Create statistics display
-        stats = html.Div([
-            dbc.Row([
-                dbc.Col([
-                    html.H5("Income:", className="text-muted mb-0"),
-                    html.H3(f"{month_income:,.2f} Kč", 
-                           className="text-success",
-                           style={'whiteSpace': 'nowrap'})  # Add nowrap
-                ], className="text-center mb-3"),
-                dbc.Col([
-                    html.H5("Expenses:", className="text-muted mb-0"),
-                    html.H3(f"{month_expenses:,.2f} Kč", 
-                           className="text-danger",
-                           style={'whiteSpace': 'nowrap'})  # Add nowrap
-                ], className="text-center mb-3")
-            ]),
-            dbc.Row([
-                dbc.Col([
-                    html.H5("Savings:", className="text-muted mb-0"),
-                    html.H3(f"{month_savings:,.2f} Kč", 
-                           className="text-info",
-                           style={'whiteSpace': 'nowrap'})  # Add nowrap
-                ], className="text-center mb-3"),
-                dbc.Col([
-                    html.H5("Investments:", className="text-muted mb-0"),
-                    html.H3(f"{month_investments:,.2f} Kč", 
-                           className="text-primary",
-                           style={'whiteSpace': 'nowrap'})  # Add nowrap
-                ], className="text-center mb-3")
-            ]),
-            html.Hr(),
-            dbc.Row([
-                dbc.Col([
-                    html.H5("Net Income:", className="text-muted mb-0"),
-                    html.H2(
-                        f"{net_income:,.2f} Kč",
-                        className=f"{'text-success' if net_income >= 0 else 'text-danger'}"
-                    )
-                ], className="text-center mb-2"),
-                dbc.Col([
-                    html.H5("Expense Ratio:", className="text-muted mb-0"),
-                    html.H2(
-                        f"{expense_ratio:.1%}",
-                        className=f"{'text-success' if expense_ratio < 0.8 else 'text-warning' if expense_ratio < 1 else 'text-danger'}"
-                    )
-                ], className="text-center")
-            ])
-        ])
+        # Calculate metrics
+        income = sum_values_by_criteria(month_data, 'VALUE', CATEGORY=income_cats)
+        expenses = abs(sum_values_by_criteria(month_data, 'VALUE', CATEGORY=expense_cats))
+        net_income = income - expenses
+        expense_ratio = calculate_expense_ratio(month_data, income_cats, expense_cats)
         
-        # Create category breakdown chart
-        expenses_by_category = sum_expenses_by_category(df, expense_cats, month=selected_month)
-        if expenses_by_category:
-            category_data = pd.DataFrame({
-                'Category': list(expenses_by_category.keys()),
-                'Amount': list(expenses_by_category.values())
-            })
-            
-            category_fig = px.pie(
-                category_data,
-                values='Amount',
-                names='Category',
-                title=f"Expense Categories - {selected_month}",
-                template='plotly_dark',  # Changed to dark theme
-                color_discrete_sequence=px.colors.qualitative.Set3
-            )
-            
-            category_fig.update_layout(
-                paper_bgcolor='rgba(0,0,0,0)',
-                plot_bgcolor='rgba(0,0,0,0)',
-                title_x=0.5,
-                title_font_size=20,
-                title_font_color='white',
-                showlegend=True,
-                legend=dict(
-                    yanchor="middle",
-                    y=0.5,
-                    xanchor="left",
-                    x=1.05,
-                    orientation="v",
-                    font=dict(color='white')
-                ),
-                height=400,
-                margin=dict(r=150)
-            )
-        else:
-            category_fig = empty_chart("No expenses for this month")
+        # Create comparison chart
+        comparison_fig = create_comparison_chart(month_data, income_cats, expense_cats)
+        
+        # Create distribution chart
+        distribution_fig = create_distribution_chart(month_data, expense_cats)
+        
+        # Create daily expenses chart
+        daily_fig = create_daily_chart(month_data, expense_cats)
         
         # Create top expenses table
-        df_month = df[df['MONTH'] == selected_month].copy()
-        df_month['VALUE_NUMERIC'] = df_month['VALUE'].str.replace('Kč', '').str.replace(',', '').astype(float)
-        top_expenses = df_month[df_month['VALUE_NUMERIC'] < 0].nsmallest(5, 'VALUE_NUMERIC')
+        top_expenses_df = month_data[
+            (month_data['CATEGORY'].isin(expense_cats)) & 
+            (month_data['VALUE_NUMERIC'] < 0)
+        ].nsmallest(5, 'VALUE_NUMERIC')
         
-        top_expenses_table = dbc.Table([
-            html.Thead(html.Tr([
-                html.Th("Category"), html.Th("Description"), html.Th("Amount", className="text-end")
-            ])),
-            html.Tbody([
-                html.Tr([
-                    html.Td(row['CATEGORY']),
-                    html.Td(row['DESCRIPTION']),
-                    html.Td(f"{abs(row['VALUE_NUMERIC']):,.2f} Kč", className="text-end text-danger")
-                ]) for _, row in top_expenses.iterrows()
-            ])
-        ], bordered=True, hover=True, responsive=True, className="mt-3")
-        
-        return stats, category_fig, top_expenses_table
+        return (
+            f"{income:,.0f} Kč",
+            f"{expenses:,.0f} Kč",
+            f"{net_income:,.0f} Kč",
+            f"{expense_ratio:.1%}",
+            comparison_fig,
+            distribution_fig,
+            daily_fig,
+            create_top_expenses_table(top_expenses_df)
+        )
+    
     except Exception as e:
-        print(f"Error updating monthly view: {e}")
-        return no_data_message(), {}, no_data_message()
+        print(f"Error updating dashboard: {e}")
+        return "Error", "Error", "Error", "Error", {}, {}, {}, "Error loading data"
+
+def create_comparison_chart(df, income_cats, expense_cats):
+    """Create income vs expenses comparison chart."""
+    income = df[df['CATEGORY'].isin(income_cats)].groupby('CATEGORY')['VALUE_NUMERIC'].sum()
+    expenses = df[df['CATEGORY'].isin(expense_cats)].groupby('CATEGORY')['VALUE_NUMERIC'].sum().abs()
+    
+    fig = go.Figure(data=[
+        go.Bar(name='Income', x=income.index, y=income.values, marker_color=THEME['colors']['income']),
+        go.Bar(name='Expenses', x=expenses.index, y=expenses.values, marker_color=THEME['colors']['expenses'])
+    ])
+    
+    fig.update_layout(
+        barmode='group',
+        paper_bgcolor=THEME['chart']['bgcolor'],
+        plot_bgcolor=THEME['chart']['bgcolor'],
+        height=THEME['chart']['height'],
+        font={'color': THEME['colors']['text']},
+        legend={'orientation': 'h', 'y': 1.1},
+        margin={'t': 30, 'b': 30, 'l': 30, 'r': 30}
+    )
+    
+    return fig
+
+def create_distribution_chart(df, expense_cats):
+    """Create expense distribution pie chart."""
+    expenses = df[df['CATEGORY'].isin(expense_cats)].groupby('CATEGORY')['VALUE_NUMERIC'].sum().abs()
+    
+    fig = go.Figure(data=[go.Pie(
+        labels=expenses.index,
+        values=expenses.values,
+        textposition='inside',
+        textinfo='percent+label',
+        marker={'colors': px.colors.qualitative.Set3},
+        hovertemplate="<b>%{label}</b><br>Amount: %{value:,.0f} Kč<br>Percentage: %{percent}<extra></extra>"
+    )])
+    
+    fig.update_layout(
+        paper_bgcolor=THEME['chart']['bgcolor'],
+        plot_bgcolor=THEME['chart']['bgcolor'],
+        height=350,
+        font={'color': THEME['colors']['text']},
+        showlegend=True,
+        legend=dict(
+            orientation="v",
+            yanchor="middle",
+            y=0.5,
+            xanchor="left",
+            x=1.1,
+            font=dict(size=12)
+        ),
+        margin=dict(t=30, b=30, l=30, r=120)  # Increased right margin for legend
+    )
+    
+    return fig
+
+def create_daily_chart(df, expense_cats):
+    """Create daily expenses heatmap with improved date parsing."""
+    def extract_day(date_str):
+        try:
+            if ('/' in date_str):
+                # Handle "1/1/25" format
+                day = int(date_str.split('/')[0])
+            elif ('.' in date_str):
+                # Handle "1.1.2025" format
+                day = int(date_str.split('.')[0])
+            else:
+                return None
+            return day
+        except (ValueError, IndexError):
+            return None
+
+    # Extract day using custom function instead of datetime
+    df['DAY'] = df['DATE'].apply(extract_day)
+    
+    # Filter out any rows where day extraction failed
+    df = df[df['DAY'].notna()]
+    
+    daily_expenses = df[
+        (df['CATEGORY'].isin(expense_cats)) & 
+        (df['VALUE_NUMERIC'] < 0)
+    ].groupby(['DAY', 'CATEGORY'])['VALUE_NUMERIC'].sum().abs()
+    
+    if daily_expenses.empty:
+        return go.Figure()
+    
+    daily_matrix = daily_expenses.unstack(fill_value=0)
+    
+    # Sort the day index numerically
+    daily_matrix = daily_matrix.reindex(index=sorted(daily_matrix.index))
+    
+    fig = go.Figure(data=go.Heatmap(
+        z=daily_matrix.values,
+        x=daily_matrix.columns,
+        y=daily_matrix.index,
+        colorscale='Viridis',
+        hoverongaps=False,
+        hovertemplate='Day: %{y}<br>Category: %{x}<br>Amount: %{z:,.0f} Kč<extra></extra>'
+    ))
+    
+    fig.update_layout(
+        paper_bgcolor=THEME['chart']['bgcolor'],
+        plot_bgcolor=THEME['chart']['bgcolor'],
+        height=600,  # Increased height
+        font={'color': THEME['colors']['text']},
+        margin={'t': 30, 'b': 80, 'l': 50, 'r': 30},  # Fixed margin syntax
+        xaxis=dict(
+            title="Category",
+            tickfont=dict(color=THEME['colors']['text']),
+            tickangle=45,
+            side='bottom'
+        ),
+        yaxis=dict(
+            title="Day of Month",
+            tickfont=dict(color=THEME['colors']['text']),
+            dtick=1,
+            type='category',
+            showgrid=True,
+            gridcolor='rgba(128,128,128,0.2)'
+        )
+    )
+    
+    return fig

@@ -4,14 +4,14 @@ Initializes and configures the Dash application, handles routing
 and page management.
 """
 
-from dash import Dash, html, dcc, callback, Output, Input, State
+from dash import Dash, html, dcc, Output, Input, State
 import dash_bootstrap_components as dbc
 import pandas as pd
 from data_fetch import get_transactions
 from get_categories import get_all_categories_api
 from functools import lru_cache
 from layouts.navbar import navbar
-from pages import main_page, monthly_page, yearly_page, setup_page, accounts_page
+from pages import main_page, monthly_page, yearly_page, setup_page, accounts_page, transactions_page, savings_page, calculator_page
 
 # Initialize the app with Bootstrap and callback exception suppression
 app = Dash(__name__, 
@@ -36,12 +36,14 @@ app.layout = html.Div([
     html.Div(id='page-content')
 ])
 
-@callback(
+@app.callback(
     Output('page-content', 'children'),
     Input('url', 'pathname')
 )
 def display_page(pathname: str) -> html.Div:
     """Route to appropriate page based on URL pathname."""
+    if pathname == "/calculator":
+        return calculator_page.layout
     if pathname == "/monthly":
         return monthly_page.layout
     elif pathname == "/yearly":
@@ -50,6 +52,10 @@ def display_page(pathname: str) -> html.Div:
         return setup_page.layout
     elif pathname == "/accounts":
         return accounts_page.layout
+    elif pathname == "/transactions":
+        return transactions_page.layout
+    elif pathname == "/savings":
+        return savings_page.layout
     else:
         return main_page.layout
 
