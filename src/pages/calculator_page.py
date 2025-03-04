@@ -224,6 +224,86 @@ layout = dbc.Container([
                     ])
                 ])
             ], style=CARD_STYLE)
+        ]),
+        
+        dbc.Tab(label="Dividend Tax Calculator", tab_id="dividend-tax-tab", children=[
+            dbc.Card([
+                dbc.CardBody([
+                    html.H3("Dividend Tax Calculator", 
+                           style={'color': THEME['text']}, 
+                           className="mb-4"),
+                    
+                    dbc.Row([
+                        dbc.Col([
+                            dbc.Label("Investment Amount (Kč)", style={'color': THEME['text']}),
+                            dbc.Input(
+                                id="dividend-amount",
+                                type="number",
+                                value=100000,
+                                min=0,
+                                style={'backgroundColor': THEME['surface'], 'color': THEME['text']}
+                            )
+                        ], md=4),
+                        
+                        dbc.Col([
+                            dbc.Label("Dividend Tax Rate (%)", style={'color': THEME['text']}),
+                            dbc.Input(
+                                id="dividend-tax-rate",
+                                type="number",
+                                value=15,
+                                min=0,
+                                max=100,
+                                style={'backgroundColor': THEME['surface'], 'color': THEME['text']}
+                            )
+                        ], md=4),
+                        
+                        dbc.Col([
+                            dbc.Label("Dividend Yield (%)", style={'color': THEME['text']}),
+                            dbc.Input(
+                                id="dividend-yield-rate",
+                                type="number",
+                                value=4,
+                                min=0,
+                                max=100,
+                                style={'backgroundColor': THEME['surface'], 'color': THEME['text']}
+                            )
+                        ], md=4)
+                    ], className="mb-4"),
+                    
+                    html.Hr(style={'borderColor': THEME['muted']}),
+                    
+                    dbc.Row([
+                        dbc.Col([
+                            create_summary_card(
+                                "Gross Dividend (Yearly)",
+                                id="gross-dividend-yearly",
+                                color="primary"
+                            )
+                        ], md=3),
+                        dbc.Col([
+                            create_summary_card(
+                                "Tax Amount (Yearly)",
+                                id="tax-amount-yearly",
+                                color="text"
+                            )
+                        ], md=3),
+                        dbc.Col([
+                            create_summary_card(
+                                "Net Dividend (Yearly)",
+                                id="net-dividend-yearly",
+                                color="success"
+                            )
+                        ], md=3),
+                        dbc.Col([
+                            create_summary_card(
+                                "Net Dividend (Monthly)",
+                                id="net-dividend-monthly",
+                                color="success"
+                            )
+                        ], md=3),
+                    ])
+                ])
+            ], style=CARD_STYLE)
         ])
     ], id="calculator-tabs", active_tab="growth-tab")
 ], fluid=True)
@@ -364,3 +444,29 @@ def calculate_weighted_return(percentages, yields):
     weighted_yield = sum(p * y / 100 for p, y in valid_pairs)
     
     return f"{total_percentage:.1f}%", f"{weighted_yield:.2f}%"
+
+@callback(
+    [Output('gross-dividend-yearly', 'children'),
+     Output('tax-amount-yearly', 'children'),
+     Output('net-dividend-yearly', 'children'),
+     Output('net-dividend-monthly', 'children')],
+    [Input('dividend-amount', 'value'),
+     Input('dividend-tax-rate', 'value'),
+     Input('dividend-yield-rate', 'value')]
+)
+def update_dividend_calculations(amount, tax_rate, yield_rate):
+    if not all(v is not None and v >= 0 for v in [amount, tax_rate, yield_rate]):
+        return "N/A", "N/A", "N/A", "N/A"
+    
+    # Calculate yearly dividend
+    gross_yearly = amount * (yield_rate / 100)
+    tax_yearly = gross_yearly * (tax_rate / 100)
+    net_yearly = gross_yearly - tax_yearly
+    net_monthly = net_yearly / 12
+    
+    return (
+        f"{gross_yearly:,.2f} Kč",
+        f"{tax_yearly:,.2f} Kč",
+        f"{net_yearly:,.2f} Kč",
+        f"{net_monthly:,.2f} Kč"
+    )
