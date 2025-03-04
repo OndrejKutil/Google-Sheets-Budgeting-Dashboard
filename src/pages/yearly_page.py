@@ -141,14 +141,12 @@ layout = dbc.Container([
      Output('yearly-category-chart', 'figure'),
      Output('monthly-comparison-chart', 'figure'),
      Output('spending-heatmap', 'figure')],
-    [Input('url', 'pathname'),
+    [Input('overview-tabs', 'active_tab'),
      Input('update-yearly-button', 'n_clicks')]
 )
-def update_yearly_view(pathname, n_clicks):
+def update_yearly_view(active_tab, n_clicks):
     """Update all dashboard components."""
-    if pathname != "/yearly":
-        return no_data_message(), {}, {}, {}, {}
-    
+    # Remove the pathname check and always update when tab is active
     try:
         SPREADSHEET_NAME = "Budget tracker 2025"
         df = pd.DataFrame(get_transactions(SPREADSHEET_NAME, "transactions"))

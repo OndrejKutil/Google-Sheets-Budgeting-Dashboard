@@ -66,9 +66,9 @@ layout = dbc.Container([
      Output('total-investments-card', 'children'),
      Output('savings-ratio-card', 'children'),
      Output('investment-ratio-card', 'children')],
-    Input('url', 'pathname')
+    [Input('overview-tabs', 'active_tab')]  # Changed from URL pathname to tab input
 )
-def update_savings_view(_):
+def update_savings_view(active_tab):
     """Update all components of the savings view."""
     try:
         SPREADSHEET_NAME = "Budget tracker 2025"

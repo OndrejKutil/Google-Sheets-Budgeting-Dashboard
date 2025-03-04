@@ -43,7 +43,7 @@ layout = dbc.Container([
             )
         ])
     ])
-])
+], fluid=True, className="px-4")  # Add fluid=True and some padding
 
 @callback(
     [Output("cache-toggle", "checked"),

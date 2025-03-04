@@ -58,7 +58,7 @@ layout = dbc.Container([
             className="mt-3"
         )
     ], className="text-center")
-])
+], fluid=True, className="px-4")
 
 @callback(
     [Output('accounts-table', 'children'),

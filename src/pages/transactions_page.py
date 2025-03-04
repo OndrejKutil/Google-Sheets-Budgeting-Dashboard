@@ -1,115 +1,124 @@
-from dash import html, dash_table
+from dash import html, dash_table, callback, Input, Output
 import dash_bootstrap_components as dbc
-import pandas as pd
+import math
 from data_fetch import get_transactions
 
 def get_transactions_data():
-    """Safely fetch and process transactions data."""
+    """Fetch raw transactions data."""
     try:
         transactions = get_transactions("Budget tracker 2025", "transactions")
-        if not transactions:
-            return None
-        
-        df = pd.DataFrame(transactions)
-        
-        # Convert VALUE to numeric directly
-        df['VALUE'] = df['VALUE'].apply(lambda x: float(x.replace('Kč', '').replace(',', '').strip()))
-        
-        return df
+        if transactions:
+            columns = list(transactions[0].keys())
+            # Calculate last page number (page_size is 25)
+            last_page = math.ceil(len(transactions) / 25) - 1
+            return transactions, columns, last_page
+        return [], [], 0
     except Exception as e:
         print(f"Error fetching transactions: {e}")
-        return None
+        return [], [], 0
 
-# Get the data
-df = get_transactions_data()
+# Get initial data
+data, columns, last_page = get_transactions_data()
 
-# Define the layout with error handling
 layout = dbc.Container([
-    html.H1("Transactions Overview", className="my-4"),
+    html.H1("Transactions", className="my-4"),
     
-    dbc.Row([
-        dbc.Col([
-            html.Div(
-                dash_table.DataTable(
-                    id='transactions-table',
-                    data=df.to_dict('records') if df is not None else [],
-                    columns=[{"name": col, "id": col} for col in (df.columns if df is not None else [])],
-                    
-                    # Enable features
-                    sort_action='native',
-                    sort_mode='multi',
-                    filter_action='native',
-                    filter_options={'case': 'insensitive'},
-                    
-                    # Table style
-                    style_table={
-                        'overflowX': 'auto',
-                        'height': '700px',
-                        'border': '1px solid rgb(60, 60, 60)'  # Subtle border for table
-                    },
-                    
-                    # Cell style
-                    style_cell={
-                        'textAlign': 'left',
-                        'padding': '8px 12px',
-                        'backgroundColor': 'rgb(50, 50, 50)',
-                        'color': 'rgb(220, 220, 220)',  # Slightly dimmed text
-                        'height': 'auto',
-                        'overflow': 'hidden',
-                        'textOverflow': 'ellipsis',
-                        'border': '1px solid rgb(60, 60, 60)'  # Subtle borders for cells
-                    },
-                    
-                    # Header style
-                    style_header={
-                        'backgroundColor': 'rgb(40, 40, 40)',
-                        'fontWeight': 'bold',
-                        'textAlign': 'center',
-                        'border': '1px solid rgb(60, 60, 60)'  # Subtle borders for header
-                    },
-                    
-                    # Filter row style
-                    style_filter={
-                        'backgroundColor': 'rgb(45, 45, 45)',
-                    },
-                    
-                    # Conditional styles - only for VALUE column
-                    style_data_conditional=[
-                        {
-                            'if': {'row_index': 'odd'},
-                            'backgroundColor': 'rgb(53, 53, 53)'
-                        },
-                        {
-                            'if': {
-                                'filter_query': '{VALUE} < 0',
-                                'column_id': 'VALUE'  # Only apply to VALUE column
-                            },
-                            'color': '#ff7875'
-                        },
-                        {
-                            'if': {
-                                'filter_query': '{VALUE} > 0',
-                                'column_id': 'VALUE'  # Only apply to VALUE column
-                            },
-                            'color': '#95de64'
-                        }
-                    ],
-                    
-                    # Value column alignment
-                    style_cell_conditional=[
-                        {
-                            'if': {'column_id': 'VALUE'},
-                            'textAlign': 'right'
-                        }
-                    ],
-                    
-                    # Additional features
-                    page_size=15,
-                    page_action='native',
-                    
-                ) if df is not None else html.Div("No data available"),
-                style={'width': '100%', 'padding': '20px 0'}
-            )
-        ], width=12)
-    ], className="g-0")
-], fluid=True)
+    dash_table.DataTable(
+        id='transactions-table',
+        data=data,
+        columns=[{"name": col, "id": col} for col in columns],
+        
+        # Core functionality
+        sort_action='native',
+        sort_mode='multi',
+        filter_action='native',
+        filter_options={'case': 'insensitive'},
+        page_action='native',
+        page_size=25,
+        page_current=last_page,  # Start at the last page
+        
+        # Features
+        row_selectable=False,
+        cell_selectable=True,
+        tooltip_delay=0,
+        tooltip_duration=None,
+        
+        # Styling
+        style_table={
+            'overflowX': 'auto',
+            'overflowY': 'auto',
+            'minWidth': '100%',
+        },
+        style_cell={
+            'textAlign': 'left',
+            'padding': '12px 15px',
+            'backgroundColor': 'rgb(50, 50, 50)',
+            'color': 'white',
+            'fontSize': '14px',
+            'fontFamily': 'system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, "Helvetica Neue", sans-serif',
+            'minWidth': '100px',
+            'whiteSpace': 'normal',
+            'height': 'auto',
+        },
+        style_header={
+            'backgroundColor': 'rgb(35, 35, 35)',
+            'fontWeight': '600',
+            'textTransform': 'uppercase',
+            'fontSize': '12px',
+            'letterSpacing': '0.5px',
+            'borderBottom': '2px solid rgb(80, 80, 80)',
+        },
+        style_data={
+            'whiteSpace': 'normal',
+            'height': 'auto',
+            'lineHeight': '20px',
+        },
+        style_filter={
+            'backgroundColor': 'rgb(45, 45, 45)',
+            'padding': '8px',
+        },
+        
+        # Conditional styling
+        style_data_conditional=[
+            {
+                'if': {'state': 'selected'},
+                'backgroundColor': 'rgba(0, 116, 217, 0.3)',
+                'border': '1px solid rgb(0, 116, 217)',
+            },
+            {
+                'if': {'row_index': 'odd'},
+                'backgroundColor': 'rgb(55, 55, 55)',
+            },
+            {
+                'if': {'filter_query': '{VALUE} contains "-"'},
+                'color': '#ff7875'  # Red for negative values
+            },
+            {
+                'if': {'filter_query': '{VALUE} > 0'},
+                'color': '#95de64'  # Green for positive values
+            }
+        ],
+        
+        # Tooltip styling
+        css=[{
+            'selector': '.dash-table-tooltip',
+            'rule': 'background-color: rgb(50, 50, 50) !important; color: white !important;'
+        }]
+    )
+], fluid=True, className="mb-5")
+
+# Add callback to refresh data
+@callback(
+    [Output('transactions-table', 'data'),
+     Output('transactions-table', 'columns'),
+     Output('transactions-table', 'page_current')],
+    [Input('url', 'pathname')]
+)
+def refresh_data(_):
+    """Refresh data when navigating to the page."""
+    data, columns, last_page = get_transactions_data()
+    return (
+        data,
+        [{"name": col, "id": col} for col in columns],
+        last_page
+    )
