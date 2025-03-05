@@ -44,7 +44,8 @@ def create_stat_card(title, value, color='success'):
 layout = dbc.Container([
     html.H1("Yearly Overview", className="my-4"),
     
-    # Top row - Stats and Category Distribution
+    # Overview Section
+    html.H2("Overview", className="mb-3"),
     dbc.Row([
         # Stats Card
         dbc.Col([
@@ -56,7 +57,7 @@ layout = dbc.Container([
                         ], className="p-3")
                     ])
                 ])
-            ], style={"height": "450px"})  # Fixed height
+            ], style={"height": "450px"})
         ], md=5),
         
         # Category Distribution
@@ -71,42 +72,44 @@ layout = dbc.Container([
                         )
                     )
                 ])
-            ], style={"height": "450px"})  # Fixed height
+            ], style={"height": "450px"})
         ], md=7)
     ], className="mb-4 g-3"),
     
-    # Middle row - Bar Chart
+    # Expenses Section
+    html.H2("Expenses", className="mb-3"),
     dbc.Row([
         dbc.Col([
             dbc.Card([
                 dbc.CardBody([
-                    html.H4("Monthly Income vs Expenses", className="text-center mb-4"),
+                    html.H4("Monthly Expenses", className="text-center mb-4"),
                     dbc.Spinner(
                         dcc.Graph(
-                            id='monthly-comparison-chart',
+                            id='monthly-expenses-chart',
                             config={'displayModeBar': False}
                         )
                     )
                 ])
-            ], className="shadow rounded-3")
+            ])
         ])
     ], className="mb-4"),
     
-    # Bottom row - Trends and Heatmap
     dbc.Row([
+        # Expense Trends
         dbc.Col([
             dbc.Card([
                 dbc.CardBody([
-                    html.H4("Financial Trends", className="text-center mb-4"),
+                    html.H4("Expense Trends", className="text-center mb-4"),
                     dbc.Spinner(
                         dcc.Graph(
-                            id='yearly-trend-chart',
+                            id='expense-trend-chart',
                             config={'displayModeBar': False}
                         )
                     )
                 ])
-            ], className="shadow rounded-3")
+            ])
         ], md=8),
+        # Spending Heatmap
         dbc.Col([
             dbc.Card([
                 dbc.CardBody([
@@ -118,11 +121,44 @@ layout = dbc.Container([
                         )
                     )
                 ])
-            ], className="shadow rounded-3")
+            ])
         ], md=4)
     ], className="mb-4 g-3"),
     
-    # Update button with improved styling
+    # Income Section
+    html.H2("Income", className="mb-3"),
+    dbc.Row([
+        # Monthly Income
+        dbc.Col([
+            dbc.Card([
+                dbc.CardBody([
+                    html.H4("Monthly Income", className="text-center mb-4"),
+                    dbc.Spinner(
+                        dcc.Graph(
+                            id='monthly-income-chart',
+                            config={'displayModeBar': False}
+                        )
+                    )
+                ])
+            ])
+        ], md=6),
+        # Income Distribution
+        dbc.Col([
+            dbc.Card([
+                dbc.CardBody([
+                    html.H4("Income Sources", className="text-center mb-4"),
+                    dbc.Spinner(
+                        dcc.Graph(
+                            id='income-distribution-chart',
+                            config={'displayModeBar': False}
+                        )
+                    )
+                ])
+            ])
+        ], md=6)
+    ], className="mb-4"),
+    
+    # Update button
     dbc.Row([
         dbc.Col([
             dbc.Button(
@@ -137,16 +173,17 @@ layout = dbc.Container([
 
 @callback(
     [Output('yearly-stats', 'children'),
-     Output('yearly-trend-chart', 'figure'),
      Output('yearly-category-chart', 'figure'),
-     Output('monthly-comparison-chart', 'figure'),
-     Output('spending-heatmap', 'figure')],
+     Output('monthly-expenses-chart', 'figure'),
+     Output('expense-trend-chart', 'figure'),
+     Output('spending-heatmap', 'figure'),
+     Output('monthly-income-chart', 'figure'),
+     Output('income-distribution-chart', 'figure')],
     [Input('overview-tabs', 'active_tab'),
      Input('update-yearly-button', 'n_clicks')]
 )
 def update_yearly_view(active_tab, n_clicks):
     """Update all dashboard components."""
-    # Remove the pathname check and always update when tab is active
     try:
         SPREADSHEET_NAME = "Budget tracker 2025"
         df = pd.DataFrame(get_transactions(SPREADSHEET_NAME, "transactions"))
@@ -160,23 +197,18 @@ def update_yearly_view(active_tab, n_clicks):
         # Create improved yearly statistics card
         yearly_stats = create_yearly_stats(df, income_cats, expense_cats, saving_cats, investing_cats)
         
-        # Create enhanced trend chart
-        trend_fig = create_trend_chart(df, income_cats, expense_cats, saving_cats, investing_cats)
-        
-        # Create improved pie chart
-        pie_fig = create_category_pie(df, expense_cats)
-        
-        # Create new bar chart
-        bar_fig = create_monthly_comparison(df, income_cats, expense_cats)
-        
-        # Create new heatmap
-        heatmap_fig = create_spending_heatmap(df, expense_cats)
-        
-        return yearly_stats, trend_fig, pie_fig, bar_fig, heatmap_fig
-    
+        return (
+            yearly_stats,
+            create_category_pie(df, expense_cats),
+            create_monthly_expenses(df, expense_cats),
+            create_expense_trend(df, expense_cats),
+            create_spending_heatmap(df, expense_cats),
+            create_monthly_income(df, income_cats),
+            create_income_distribution(df, income_cats)
+        )
     except Exception as e:
         print(f"Error updating yearly view: {e}")
-        return no_data_message(), {}, {}, {}, {}
+        return no_data_message(), {}, {}, {}, {}, {}, {}
 
 def no_data_message():
     return html.Div("No data available", className="text-muted text-center")
@@ -498,6 +530,309 @@ def create_spending_heatmap(df, expense_cats):
             tickfont=dict(color='white', size=12),
             title_font=dict(color='white', size=14)
         )
+    )
+    
+    return fig
+
+def create_monthly_expenses(df, expense_cats):
+    """Create stacked area chart showing expenses by category over time."""
+    # Prepare monthly data by category
+    months = ['January', 'February', 'March', 'April', 'May', 'June', 
+              'July', 'August', 'September', 'October', 'November', 'December']
+    
+    # Create a list to store monthly data
+    monthly_data = []
+    
+    for month in months:
+        month_df = df[df['MONTH'] == month]
+        month_dict = {'Month': month}
+        
+        for category in expense_cats:
+            amount = abs(sum_values_by_criteria(month_df, 'VALUE', CATEGORY=[category]))
+            month_dict[category] = amount
+            
+        monthly_data.append(month_dict)
+    
+    # Convert to DataFrame
+    expenses_df = pd.DataFrame(monthly_data)
+    
+    # Create stacked area chart
+    fig = go.Figure()
+    
+    # Add area traces for each expense category
+    for category in expense_cats:
+        fig.add_trace(go.Scatter(
+            x=expenses_df['Month'],
+            y=expenses_df[category],
+            name=category,
+            mode='lines',
+            stackgroup='one',  # Enable stacking
+            hovertemplate="%{x}<br>" +
+                         f"{category}: %{{y:,.0f}} Kč<br>" +
+                         "<extra></extra>"
+        ))
+    
+    # Update layout with adjusted title position
+    fig.update_layout(
+        title={
+            'text': 'Monthly Expenses by Category',
+            'y': 0.95,  # Move title higher
+            'x': 0.5,
+            'xanchor': 'center',
+            'yanchor': 'top'
+        },
+        paper_bgcolor=CHART_THEME['paper_bgcolor'],
+        plot_bgcolor=CHART_THEME['bgcolor'],
+        title_font_size=CHART_THEME['title_font_size'],
+        title_font_color=CHART_THEME['font_color'],
+        showlegend=True,
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="right",
+            x=1,
+            font=dict(color=CHART_THEME['font_color'])
+        ),
+        height=CHART_THEME['height'],
+        xaxis=dict(
+            title="Month",
+            tickangle=45,
+            showgrid=True,
+            gridcolor=CHART_THEME['grid_color'],
+            tickfont=dict(color=CHART_THEME['font_color'])
+        ),
+        yaxis=dict(
+            title='Amount (Kč)',
+            showgrid=True,
+            gridcolor=CHART_THEME['grid_color'],
+            tickfont=dict(color=CHART_THEME['font_color']),
+            tickformat=',.0f'
+        )
+    )
+    
+    return fig
+
+def create_expense_trend(df, expense_cats):
+    """Create line chart showing expense trends."""
+    monthly_expenses = {}
+    for month in ['January', 'February', 'March', 'April', 'May', 'June', 
+                  'July', 'August', 'September', 'October', 'November', 'December']:
+        expenses = abs(sum_values_by_criteria(df, 'VALUE', CATEGORY=expense_cats, MONTH=month))
+        monthly_expenses[month] = expenses if expenses != 0 else None
+    
+    trend_df = pd.DataFrame({
+        'Month': list(monthly_expenses.keys()),
+        'Expenses': list(monthly_expenses.values())
+    })
+    
+    fig = px.line(trend_df, x='Month', y='Expenses',
+                  title='Expense Trends',
+                  template='plotly_dark')
+    
+    fig.update_traces(
+        line=dict(color=COLORS['expenses'], width=3),
+        mode='lines+markers'
+    )
+    
+    fig.update_layout(
+        paper_bgcolor=CHART_THEME['paper_bgcolor'],
+        plot_bgcolor=CHART_THEME['bgcolor'],
+        title_x=0.5,
+        showlegend=False,
+        height=CHART_THEME['height'],
+        xaxis=dict(
+            tickangle=45,
+            showgrid=True,
+            gridcolor=CHART_THEME['grid_color'],
+            tickfont=dict(color=CHART_THEME['font_color'])
+        ),
+        yaxis=dict(
+            title='Amount (Kč)',
+            showgrid=True,
+            gridcolor=CHART_THEME['grid_color'],
+            tickfont=dict(color=CHART_THEME['font_color']),
+            tickformat=',.0f'
+        )
+    )
+    return fig
+
+def create_monthly_income(df, income_cats):
+    """Create stacked bar chart showing income sources by month."""
+    months = ['January', 'February', 'March', 'April', 'May', 'June', 
+              'July', 'August', 'September', 'October', 'November', 'December']
+    
+    # Create a list to store monthly data
+    monthly_data = []
+    
+    for month in months:
+        month_df = df[df['MONTH'] == month]
+        month_dict = {'Month': month}
+        
+        for category in income_cats:
+            amount = sum_values_by_criteria(month_df, 'VALUE', CATEGORY=[category])
+            if amount > 0:  # Only include positive income
+                month_dict[category] = amount
+            else:
+                month_dict[category] = 0
+                
+        monthly_data.append(month_dict)
+    
+    # Convert to DataFrame
+    income_df = pd.DataFrame(monthly_data)
+    
+    # Create stacked bar chart
+    fig = go.Figure()
+    
+    # Add bar traces for each income category
+    for category in income_cats:
+        if category in income_df.columns:  # Only add if category has data
+            fig.add_trace(go.Bar(
+                name=category,
+                x=income_df['Month'],
+                y=income_df[category],
+                hovertemplate="%{x}<br>" +
+                             f"{category}: %{{y:,.0f}} Kč<br>" +
+                             "<extra></extra>"
+            ))
+    
+    fig.update_layout(
+        title={
+            'text': 'Monthly Income by Source',
+            'y': 0.95,
+            'x': 0.5,
+            'xanchor': 'center',
+            'yanchor': 'top'
+        },
+        barmode='stack',
+        paper_bgcolor=CHART_THEME['paper_bgcolor'],
+        plot_bgcolor=CHART_THEME['bgcolor'],
+        title_font_size=CHART_THEME['title_font_size'],
+        title_font_color=CHART_THEME['font_color'],
+        showlegend=True,
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="right",
+            x=1,
+            font=dict(color=CHART_THEME['font_color'])
+        ),
+        height=CHART_THEME['height'],
+        xaxis=dict(
+            title="Month",
+            tickangle=45,
+            showgrid=True,
+            gridcolor=CHART_THEME['grid_color'],
+            tickfont=dict(color=CHART_THEME['font_color'])
+        ),
+        yaxis=dict(
+            title='Amount (Kč)',
+            showgrid=True,
+            gridcolor=CHART_THEME['grid_color'],
+            tickfont=dict(color=CHART_THEME['font_color']),
+            tickformat=',.0f'
+        )
+    )
+    
+    return fig
+
+def create_income_distribution(df, income_cats):
+    """Create income trend comparison chart."""
+    months = ['January', 'February', 'March', 'April', 'May', 'June', 
+              'July', 'August', 'September', 'October', 'November', 'December']
+    
+    # Calculate total income for each month
+    monthly_totals = []
+    running_total = 0
+    
+    for month in months:
+        month_df = df[df['MONTH'] == month]
+        month_income = sum_values_by_criteria(month_df, 'VALUE', CATEGORY=income_cats)
+        running_total += month_income
+        
+        monthly_totals.append({
+            'Month': month,
+            'Monthly Income': month_income,
+            'Cumulative Income': running_total
+        })
+    
+    # Convert to DataFrame
+    income_df = pd.DataFrame(monthly_totals)
+    
+    # Create figure with secondary y-axis
+    fig = make_subplots(specs=[[{"secondary_y": True}]])
+    
+    # Add monthly income bars
+    fig.add_trace(
+        go.Bar(
+            name='Monthly Income',
+            x=income_df['Month'],
+            y=income_df['Monthly Income'],
+            marker_color=COLORS['income']
+        ),
+        secondary_y=False
+    )
+    
+    # Add cumulative line
+    fig.add_trace(
+        go.Scatter(
+            name='Cumulative Income',
+            x=income_df['Month'],
+            y=income_df['Cumulative Income'],
+            line=dict(color=COLORS['savings'], width=3),
+            mode='lines+markers'
+        ),
+        secondary_y=True
+    )
+    
+    # Update layout
+    fig.update_layout(
+        title={
+            'text': 'Income Progress',
+            'y': 0.95,
+            'x': 0.5,
+            'xanchor': 'center',
+            'yanchor': 'top'
+        },
+        paper_bgcolor=CHART_THEME['paper_bgcolor'],
+        plot_bgcolor=CHART_THEME['bgcolor'],
+        title_font_size=CHART_THEME['title_font_size'],
+        title_font_color=CHART_THEME['font_color'],
+        showlegend=True,
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="right",
+            x=1,
+            font=dict(color=CHART_THEME['font_color'])
+        ),
+        height=CHART_THEME['height'],
+        xaxis=dict(
+            title="Month",
+            tickangle=45,
+            showgrid=True,
+            gridcolor=CHART_THEME['grid_color'],
+            tickfont=dict(color=CHART_THEME['font_color'])
+        )
+    )
+    
+    # Update yaxis properties
+    fig.update_yaxes(
+        title_text="Monthly Income (Kč)",
+        showgrid=True,
+        gridcolor=CHART_THEME['grid_color'],
+        tickfont=dict(color=CHART_THEME['font_color']),
+        tickformat=',.0f',
+        secondary_y=False
+    )
+    fig.update_yaxes(
+        title_text="Cumulative Income (Kč)",
+        showgrid=False,
+        tickfont=dict(color=CHART_THEME['font_color']),
+        tickformat=',.0f',
+        secondary_y=True
     )
     
     return fig

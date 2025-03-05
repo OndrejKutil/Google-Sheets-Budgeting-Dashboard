@@ -154,7 +154,7 @@ layout = dbc.Container([
         dbc.Col([
             dbc.Card([
                 dbc.CardBody([
-                    html.H5("Income vs Expenses", className="text-center mb-4",
+                    html.H5("Monthly Expenses", className="text-center mb-4",  # Changed from "Income vs Expenses"
                            style={'color': THEME['colors']['text']}),
                     dcc.Graph(id='monthly-comparison')
                 ])
@@ -254,13 +254,16 @@ def update_dashboard(selected_month):
         return "Error", "Error", "Error", "Error", {}, {}, {}, "Error loading data"
 
 def create_comparison_chart(df, income_cats, expense_cats):
-    """Create income vs expenses comparison chart."""
-    income = df[df['CATEGORY'].isin(income_cats)].groupby('CATEGORY')['VALUE_NUMERIC'].sum()
+    """Create expenses bar chart."""
     expenses = df[df['CATEGORY'].isin(expense_cats)].groupby('CATEGORY')['VALUE_NUMERIC'].sum().abs()
     
     fig = go.Figure(data=[
-        go.Bar(name='Income', x=income.index, y=income.values, marker_color=THEME['colors']['income']),
-        go.Bar(name='Expenses', x=expenses.index, y=expenses.values, marker_color=THEME['colors']['expenses'])
+        go.Bar(
+            name='Expenses', 
+            x=expenses.index, 
+            y=expenses.values, 
+            marker_color=THEME['colors']['expenses']
+        )
     ])
     
     fig.update_layout(
@@ -269,8 +272,9 @@ def create_comparison_chart(df, income_cats, expense_cats):
         plot_bgcolor=THEME['chart']['bgcolor'],
         height=THEME['chart']['height'],
         font={'color': THEME['colors']['text']},
-        legend={'orientation': 'h', 'y': 1.1},
-        margin={'t': 30, 'b': 30, 'l': 30, 'r': 30}
+        showlegend=False,  # Removed legend since there's only one type of bar
+        margin={'t': 30, 'b': 30, 'l': 30, 'r': 30},
+        yaxis_title="Value (Kč)"
     )
     
     return fig
