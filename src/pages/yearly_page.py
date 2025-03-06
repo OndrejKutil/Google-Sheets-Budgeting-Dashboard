@@ -8,41 +8,24 @@ import numpy as np
 from data_fetch import get_transactions
 from get_categories import get_all_categories_api
 from analysis import sum_values_by_criteria, sum_expenses_by_category
-
-CHART_THEME = {
-    'bgcolor': 'rgba(0,0,0,0)',
-    'paper_bgcolor': 'rgba(0,0,0,0)',
-    'font_color': 'white',
-    'grid_color': 'rgba(128,128,128,0.2)',
-    'title_font_size': 20,
-    'height': 400,
-}
-
-COLORS = {
-    'income': '#2ECC71',
-    'expenses': '#E74C3C',
-    'savings': '#3498DB',
-    'investments': '#9B59B6',
-    'success': 'text-success',
-    'danger': 'text-danger',
-    'info': 'text-info',
-    'primary': 'text-primary'
-}
+from styles.theme import COLORS, CARD_STYLE, CHART_THEME, TEXT_STYLES
 
 def create_stat_card(title, value, color='success'):
     """Simplified stat card without trend indicator."""
     return dbc.Card([
         dbc.CardBody([
-            html.H5(title, className="text-muted mb-2"),
+            html.H5(title, className="text-muted mb-2", 
+                   style={'fontSize': '0.9rem', 'fontWeight': '500'}),
             html.H3(
                 f"{value:,.2f} Kč", 
-                className=f"text-{color}"
+                className=f"text-{color}",
+                style={'fontSize': '1.8rem', 'fontWeight': '600'}
             )
         ])
-    ], className="shadow-sm h-100 rounded-3")
+    ], style=CARD_STYLE, className="shadow-sm rounded-3")
 
 layout = dbc.Container([
-    html.H1("Yearly Overview", className="my-4"),
+    html.H1("Yearly Overview", style=TEXT_STYLES['h1']),
     
     # Overview Section
     html.H2("Overview", className="mb-3"),
@@ -169,7 +152,7 @@ layout = dbc.Container([
             )
         ], md={"size": 4, "offset": 4})
     ])
-], fluid=True, className="px-4")
+], fluid=True, style={'backgroundColor': COLORS['background']})
 
 @callback(
     [Output('yearly-stats', 'children'),
@@ -575,8 +558,8 @@ def create_monthly_expenses(df, expense_cats):
     # Update layout with adjusted title position
     fig.update_layout(
         title={
-            'text': 'Monthly Expenses by Category',
-            'y': 0.95,  # Move title higher
+            'text': '',  # Remove title text
+            'y': 0.95,
             'x': 0.5,
             'xanchor': 'center',
             'yanchor': 'top'

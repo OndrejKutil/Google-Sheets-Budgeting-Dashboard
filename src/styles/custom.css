@@ -1,0 +1,52 @@
+/* Base dropdown styles */
+.dbc-dark .Select-control {
+    background-color: #2d2d2d !important;
+    border-color: #404040 !important;
+    border-radius: 4px !important;
+}
+
+/* Selected value in dropdown */
+.dbc-dark .Select-value,
+.dbc-dark .Select-value-label {
+    color: #ffffff !important;
+}
+
+/* Dropdown menu container */
+.dbc-dark .Select-menu-outer {
+    background-color: #ffffff !important;
+}
+
+/* Individual dropdown options */
+.dbc-dark .Select-menu-outer .Select-option {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+}
+
+/* Hover state for dropdown options */
+.dbc-dark .Select-menu-outer .Select-option:hover {
+    background-color: #f5f5f5 !important;
+    color: #000000 !important;
+}
+
+/* Selected/focused option in dropdown */
+.dbc-dark .Select-menu-outer .Select-option.is-selected,
+.dbc-dark .Select-menu-outer .Select-option.is-focused {
+    background-color: #3498DB !important;
+    color: #ffffff !important;
+}
+
+/* Input text color */
+.dbc-dark .Select-input > input {
+    color: #000000 !important;
+}
+
+/* Placeholder text color */
+.dbc-dark .Select-placeholder {
+    color: #adb5bd !important;
+}
+
+/* Focused/hovered option in dropdown */
+.VirtualizedSelectFocusedOption {
+    background-color: #3498DB !important;
+    color: #ffffff !important;
+}

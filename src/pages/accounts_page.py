@@ -3,6 +3,8 @@ from dash import html, dcc, callback, Input, Output
 import plotly.express as px
 import pandas as pd
 from data_fetch import get_transactions, get_worksheet
+from styles.common_styles import CARD_STYLE, TABLE_STYLE, BUTTON_STYLE
+from styles.theme import CHART_THEME, COLORS, TEXT_STYLES
 
 def get_accounts(spreadsheet_name: str) -> list:
     """Retrieve account names from the definitions worksheet.
@@ -29,25 +31,25 @@ def get_accounts(spreadsheet_name: str) -> list:
 
 # Define the layout structure for the accounts page
 layout = dbc.Container([
-    html.H1("Accounts Overview", className="my-4"),
+    html.H1("Accounts Overview", className="my-4", style=TEXT_STYLES['h1']),
     dbc.Row([
         dbc.Col([
             dbc.Card([
                 dbc.CardBody([
-                    html.H4("Account Balances", className="card-title text-center mb-4"),
+                    html.H4("Account Balances", className="card-title text-center mb-4", style=TEXT_STYLES['h4']),
                     dbc.Spinner(html.Div(id="accounts-table")),
                 ])
-            ])
+            ], style=CARD_STYLE)
         ], md=6),
         dbc.Col([
             dbc.Card([
                 dbc.CardBody([
-                    html.H4("Account Distribution", className="text-center mb-4"),
+                    html.H4("Account Distribution", className="text-center mb-4", style=TEXT_STYLES['h4']),
                     dbc.Spinner(
                         dcc.Graph(id='accounts-pie-chart', figure={})
                     )
                 ])
-            ])
+            ], style=CARD_STYLE)
         ], md=6)
     ]),
     html.Div([
@@ -55,7 +57,8 @@ layout = dbc.Container([
             "Update Overview",
             id="update-accounts-button",
             color="primary",
-            className="mt-3"
+            className="mt-3",
+            style=BUTTON_STYLE
         )
     ], className="text-center")
 ], fluid=True, className="px-4")
@@ -134,32 +137,33 @@ def update_accounts_view(n_clicks):
                 html.Th("Balance", className="text-end")
             ])),
             html.Tbody(table_rows)
-        ], bordered=True, hover=True)
+        ], bordered=True, hover=True, style=TABLE_STYLE)
         
         # Generate pie chart for positive balances only
         positive_balances = {k: v for k, v in account_balances.items() if v > 0}
         if positive_balances:
+            # Define colors from theme for accounts
+            account_colors = [COLORS['primary'], COLORS['success'], COLORS['purple'], COLORS['info']]
+            
             fig = px.pie(
                 values=list(positive_balances.values()),
                 names=list(positive_balances.keys()),
                 title='Account Distribution',
-                template='plotly_dark',  # Changed to dark theme
-                color_discrete_sequence=px.colors.qualitative.Set3
+                template='plotly_dark',
+                color_discrete_sequence=account_colors  # Use theme colors
             )
             
             fig.update_layout(
-                paper_bgcolor='rgba(0,0,0,0)',
                 plot_bgcolor='rgba(0,0,0,0)',
+                paper_bgcolor='rgba(0,0,0,0)',
                 title_x=0.5,
-                title_font_size=20,
-                title_font_color='white',
+                font=dict(color=COLORS['text']),
                 showlegend=True,
                 legend=dict(
                     orientation="h",
                     y=-0.2,
-                    font=dict(color='white')
-                ),
-                height=400
+                    font=dict(color=COLORS['text'])
+                )
             )
         else:
             fig = empty_chart("No account balances to display")
