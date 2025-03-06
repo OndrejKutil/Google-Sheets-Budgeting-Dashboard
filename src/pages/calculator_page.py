@@ -5,8 +5,6 @@ from styles.theme import COLORS, CHART_THEME
 from styles.common_styles import CARD_STYLE
 import json
 import pandas as pd
-import traceback
-import sys
 
 # Define the investment calculation function here since it might be missing
 def calculate_investment_growth(initial_sum, monthly_investment, annual_return, years):

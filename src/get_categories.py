@@ -3,10 +3,11 @@
 Handles fetching and processing of category definitions from the spreadsheet.
 """
 
-from data_fetch import get_worksheet
+from data_fetch import get_worksheet, cached
 import pandas as pd
 from typing import List, Tuple
 
+@cached
 def get_all_categories_api(spreadsheet_name: str) -> Tuple[List[str], List[str], List[str], List[str]]:
     """Fetch and categorize all transaction categories.
     

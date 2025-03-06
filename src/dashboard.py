@@ -1,18 +1,39 @@
 """Main dashboard application module."""
 
-from dash import Dash, html, dcc, Output, Input, State
+import dash
 import dash_bootstrap_components as dbc
+import logging
+from dash import dcc, html
+from dash.dependencies import Input, Output
 import pandas as pd
 from data_fetch import get_transactions
 from get_categories import get_all_categories_api
 from functools import lru_cache
-from layouts.navbar import navbar
-from pages import overview_page, setup_page, accounts_page, transactions_page, savings_page, calculator_page
+from layouts.navbar import navbar  # Import the improved navbar component
 
-# Initialize the app with Bootstrap and callback exception suppression
-app = Dash(__name__, 
-           external_stylesheets=[dbc.themes.DARKLY],
-           suppress_callback_exceptions=True)
+# Configure logger to only log to file, not console
+logger = logging.getLogger("budget_app.dashboard")
+# Remove any existing handlers (to avoid duplicate logging)
+for handler in logger.handlers[:]:
+    logger.removeHandler(handler)
+# Add file handler only
+file_handler = logging.FileHandler("app_debug.log")
+file_handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+logger.setLevel(logging.INFO)
+logger.addHandler(file_handler)
+
+# Initialize the Dash app with Bootstrap dark theme
+app = dash.Dash(
+    __name__,
+    external_stylesheets=[
+        dbc.themes.DARKLY,  # Using Darkly theme for dark mode
+        'https://use.fontawesome.com/releases/v5.15.4/css/all.css'  # FontAwesome for icons
+    ],
+    suppress_callback_exceptions=True,
+    meta_tags=[
+        {"name": "viewport", "content": "width=device-width, initial-scale=1"}
+    ]
+)
 
 # Cache data fetching
 @lru_cache(maxsize=1)
@@ -23,28 +44,33 @@ def get_cached_data(spreadsheet_name):
     income_cats, expense_cats, _, _ = get_all_categories_api(spreadsheet_name)
     return df, income_cats, expense_cats
 
+# Define the layout structure using the imported navbar
 app.layout = html.Div([
     dcc.Location(id='url', refresh=False),
-    navbar,
-    html.Div(id='page-content')
-])
+    navbar,  # Using the imported navbar component
+    html.Div(id='page-content', className="container-fluid px-4")  # Added container-fluid and padding
+], style={"width": "100%", "overflow-x": "hidden"})  # Prevent horizontal scrolling
 
-@app.callback(
-    Output('page-content', 'children'),
-    Input('url', 'pathname')
-)
-def display_page(pathname: str) -> html.Div:
-    """Route to appropriate page based on URL pathname."""
-    if pathname == "/calculator":
-        return calculator_page.layout
-    elif pathname == "/setup":
-        return setup_page.layout
-    elif pathname == "/accounts":
-        return accounts_page.layout
-    elif pathname == "/transactions":
-        return transactions_page.layout
-    else:
-        return overview_page.layout
+# Import routes here - make sure the import is done after app is defined
+from routes import render_page_content
+
+# Define the callback to update page content
+@app.callback(Output('page-content', 'children'), [Input('url', 'pathname')])
+def display_page(pathname):
+    """
+    Route to the appropriate page based on URL pathname.
+    
+    Args:
+        pathname: Current URL path
+    
+    Returns:
+        Component: The page content to display
+    """
+    logger.debug(f"Navigating to path: {pathname}")
+    return render_page_content(pathname)
+
+# Log application startup
+logger.info("Dashboard initialized")
 
 if __name__ == '__main__': 
     app.run(debug=True)

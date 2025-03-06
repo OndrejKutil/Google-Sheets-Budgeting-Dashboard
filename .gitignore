@@ -3,3 +3,5 @@ __pycache__/
 *.csv
 idk.py
 tokens/new-project-01-449515-0a3860dea29d.json
+app_debug.log
+.banner_shown

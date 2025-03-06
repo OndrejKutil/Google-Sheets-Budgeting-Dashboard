@@ -1,20 +1,102 @@
-# Google Sheets Budgeting Tool
+<div align="center">
 
-This project is a budgeting tool that is integrated with my Google Sheets to help me manage my finances effectively.
-I have built this project as a add-on to my coding portfolio to showcase my skills in Data Analytics
+# 📊 Google Sheets Budgeting Dashboard
 
-## Features
+*A data-driven approach to personal finance management*
 
-- Better visualisation thanks to python
-- Seemles and fast integration with Google Sheets
-- Real time responsivness
+[![Python](https://img.shields.io/badge/Python-3.9+-blue.svg)](https://www.python.org/downloads/)
+[![Dash](https://img.shields.io/badge/Dash-2.14-blue.svg)](https://dash.plotly.com/)
 
-## Usage
+<img src="https://github.com/yourusername/google-sheets-budget-dashboard/blob/main/assets/dashboard_preview.png" alt="Dashboard Preview" width="700px">
 
-- Open the provided Google Sheets template:
-- [Google Sheets Template](https://docs.google.com/spreadsheets/d/1AGrdqAGLqPy7Oy1qbT7EMoNl1OISMraVi6T2RDVLhGY/edit?usp=sharing)
-- You can also find the template in .xlsx format in the `template` folder of this repository.
+</div>
 
-## Contributing
+## 🌟 Overview
 
-Contributions are welcome! Please fork the repository and submit a pull request.
+This budgeting dashboard is a **portfolio project** showcasing advanced data analytics skills and Python development expertise. Born from a passion for financial analytics and data visualization, this tool transforms raw financial transaction data from Google Sheets into actionable insights through an interactive web dashboard.
+
+### Key Features
+
+- **Data Visualization**: Transform financial data into insightful charts and graphs
+- **Performance Optimization**: Implement advanced caching to reduce API calls and improve response times
+- **Real-time Integration**: Seamless connection with Google Sheets for always up-to-date insights
+- **Responsive Design**: Modern interface that works across devices
+- **Financial Analytics**: Track spending patterns, savings rates, and investment performance
+
+## 💡 Motivation
+
+As someone passionate about both finance and data analytics, I created this project to demonstrate how programming can enhance personal financial management. The dashboard reflects my belief that financial empowerment comes through data-driven insights and visualization.
+
+This project showcases my skills in:
+
+- **Data Processing**: Transforming raw data into structured analytics
+- **Financial Analysis**: Applying financial metrics and KPIs
+- **Full-Stack Development**: Creating both backend data processing and frontend visualization
+- **Python Ecosystem**: Working with libraries like Pandas, Plotly, and Dash
+
+## 🔧 Technology Stack
+
+- **Frontend**: Dash, Plotly, Bootstrap
+- **Data Processing**: Pandas, NumPy
+- **External Integration**: Google Sheets API, gspread
+- **Performance**: Custom caching system, backoff strategies
+- **Code Quality**: Type hints, comprehensive documentation
+
+## 📊 Dashboard Sections
+
+- **Overview**: Year-to-date financial summary and KPIs
+- **Monthly Analysis**: Detailed monthly breakdown of income and expenses
+- **Accounts**: Current balances and distribution across accounts
+- **Transactions**: Searchable transaction history with filtering
+- **Savings & Investments**: Track long-term wealth building progress
+- **Calculators**: Various calculator for investing
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+- Python 3.9+
+- Copy of my google sheet template with data (or similarly structured data sheet)
+- Google API credentials
+
+### Installation
+
+```bash
+# Clone the repository
+git clone https://github.com/yourusername/google-sheets-budget-dashboard.git
+
+# Navigate to the project directory
+cd google-sheets-budget-dashboard
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Run the application
+python src/main.py
+```
+
+## 📚 Documentation
+
+For detailed documentation about the application architecture, components, and functionality, see the [Documentation](docs/README.md) section.
+
+## 🧠 Development Philosophy
+
+This project follows several key development principles:
+
+- **Clean Code**: Well-structured, documented, and maintainable codebase
+- **Performance First**: Optimized for speed with intelligent caching
+- **User Experience**: Intuitive design focused on data clarity
+- **Financial Insight**: Designed to reveal meaningful financial patterns
+
+## 🔗 Connect With Me
+
+Feel free to reach out if you have any questions about the project or want to discuss data analytics, Python development, or financial technology!
+
+- [LinkedIn](https://linkedin.com/in/ondřej-kutil-342a97256)
+- [GitHub](https://github.com/OndrejKutil)
+
+---
+
+<div align="center">
+<i>Built with Python, Dash, and a passion for financial analytics</i>
+</div>
