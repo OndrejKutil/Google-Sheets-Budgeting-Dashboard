@@ -7,8 +7,6 @@
 [![Python](https://img.shields.io/badge/Python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![Dash](https://img.shields.io/badge/Dash-2.14-blue.svg)](https://dash.plotly.com/)
 
-<img src="https://github.com/yourusername/google-sheets-budget-dashboard/blob/main/assets/dashboard_preview.png" alt="Dashboard Preview" width="700px">
-
 </div>
 
 ## 🌟 Overview
