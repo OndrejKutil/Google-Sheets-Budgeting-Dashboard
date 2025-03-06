@@ -2,32 +2,30 @@ import dash_bootstrap_components as dbc
 from dash import html, dcc, callback, Input, Output
 import plotly.express as px
 import pandas as pd
-from data_fetch import get_transactions, get_worksheet
+from data_fetch import get_transactions
 from styles.common_styles import CARD_STYLE, TABLE_STYLE, BUTTON_STYLE
 from styles.theme import CHART_THEME, COLORS, TEXT_STYLES
 
 def get_accounts(spreadsheet_name: str) -> list:
-    """Retrieve account names from the definitions worksheet.
+    """Retrieve unique account names from the transactions worksheet.
     
     Args:
         spreadsheet_name (str): Name of the Google Sheets spreadsheet
 
     Returns:
-        list: List of account names, excluding the header and empty values
-        
-    Note:
-        Reads from cells B3:B11 where:
-        - B3 contains the header 'Accounts'
-        - B4:B7 contain the actual account names
-        - Rest are either empty or contain other data
+        list: List of unique account names
     """
-    accounts_data = get_worksheet(spreadsheet_name, "definitions", 3, 2, 1)
-    accounts = []
-    for row in accounts_data[0:5]:  # Process header + 4 account rows
-        account_name = row.get('Accounts', '').strip()
-        if account_name:
-            accounts.append(account_name)
-    return accounts
+    transactions = get_transactions(spreadsheet_name, "transactions")
+    
+    # Extract unique account names
+    unique_accounts = set()
+    for transaction in transactions:
+        account = transaction.get('ACCOUNT', '').strip()
+        if account:  # Only add non-empty account names
+            unique_accounts.add(account)
+    
+    # Return sorted list of accounts for consistent display order
+    return sorted(list(unique_accounts))
 
 # Define the layout structure for the accounts page
 layout = dbc.Container([
