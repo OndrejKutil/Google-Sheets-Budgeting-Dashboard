@@ -17,11 +17,19 @@ def sum_values_by_criteria(transactions: pd.DataFrame, value_key: str, **criteri
         transactions: DataFrame containing financial transactions
         value_key: Column name containing monetary values
         **criteria: Key-value pairs for filtering (e.g., CATEGORY=['Food', 'Transport'])
+                   Special key VALUE_CONDITION can be used for value comparisons (e.g., '> 0')
     
     Returns:
         float: Sum of filtered values
     """
+    if transactions.empty:
+        return 0.0
+        
     filtered_df = transactions.copy()
+    
+    # Check if value_key exists in columns
+    if value_key not in filtered_df.columns:
+        return 0.0
     
     # First ensure we're working with strings before applying string operations
     filtered_df[value_key] = filtered_df[value_key].astype(str)
@@ -31,14 +39,35 @@ def sum_values_by_criteria(transactions: pd.DataFrame, value_key: str, **criteri
                              .str.strip()
                              .astype(float))
     
+    # Special handling for VALUE_CONDITION
+    if 'VALUE_CONDITION' in criteria:
+        value_condition = criteria.pop('VALUE_CONDITION')
+        try:
+            filtered_df = filtered_df.query(f"{value_key} {value_condition}")
+        except Exception as e:
+            # If query fails, try manual filtering
+            if '>' in value_condition:
+                threshold = float(value_condition.replace('>', '').strip())
+                filtered_df = filtered_df[filtered_df[value_key] > threshold]
+            elif '<' in value_condition:
+                threshold = float(value_condition.replace('<', '').strip())
+                filtered_df = filtered_df[filtered_df[value_key] < threshold]
+    
+    # Process remaining criteria
     for key, value in criteria.items():
+        if key not in filtered_df.columns:
+            continue
+            
         if isinstance(value, list):
             filtered_df = filtered_df[filtered_df[key].isin(value)]
         elif isinstance(value, str) and any(op in value for op in ['>', '<', '>=', '<=', '==', '!=']):
-            filtered_df = filtered_df.query(f"{key} {value}")
+            try:
+                filtered_df = filtered_df.query(f"{key} {value}")
+            except Exception:
+                pass
         else:
             filtered_df = filtered_df[filtered_df[key] == value]
-
+    
     return filtered_df[value_key].sum()
 
 

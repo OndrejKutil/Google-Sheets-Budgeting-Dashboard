@@ -102,11 +102,31 @@ def update_savings_view(active_tab):
         df = pd.DataFrame(get_transactions(SPREADSHEET_NAME, "transactions"))
         income_cats, _, saving_cats, investing_cats = get_all_categories_api(SPREADSHEET_NAME)
         
+        # Ensure HISA_FUND column exists, add it if missing
+        if 'HISA_FUND' not in df.columns:
+            df['HISA_FUND'] = ''
+            
         # Calculate total income
         total_income = sum_values_by_criteria(df, 'VALUE', CATEGORY=income_cats)
         
         # Calculate statistics
-        total_savings = abs(sum_values_by_criteria(df, 'VALUE', CATEGORY=saving_cats))
+        # Regular savings (negative values)
+        savings_deposits = abs(sum_values_by_criteria(df, 'VALUE', CATEGORY=saving_cats, 
+                                                     VALUE_CONDITION='< 0'))
+        
+        # Create withdrawal mask: HISA_FUND populated + positive value + TYPE is 'income'
+        withdrawal_mask = (df['HISA_FUND'].notna() & 
+                          (df['HISA_FUND'].astype(str) != '') & 
+                          (df['TYPE'] == 'income'))
+        
+        # Get withdrawals from savings funds
+        df_withdrawals = df[withdrawal_mask].copy()
+        savings_withdrawals = sum_values_by_criteria(df_withdrawals, 'VALUE', VALUE_CONDITION='> 0')
+        
+        # Net savings calculation
+        total_savings = savings_deposits - savings_withdrawals
+        
+        # Calculate total investments
         total_investments = abs(sum_values_by_criteria(df, 'VALUE', CATEGORY=investing_cats))
         
         # Calculate ratios
@@ -120,16 +140,30 @@ def update_savings_view(active_tab):
         
         for month in all_months:
             month_income = sum_values_by_criteria(df, 'VALUE', CATEGORY=income_cats, MONTH=month)
-            month_savings = abs(sum_values_by_criteria(df, 'VALUE', CATEGORY=saving_cats, MONTH=month))
+            
+            # Regular savings (negative values)
+            month_savings_deposits = abs(sum_values_by_criteria(df, 'VALUE', CATEGORY=saving_cats, 
+                                                              MONTH=month, VALUE_CONDITION='< 0'))
+            
+            # Withdrawals from savings (positive values with HISA_FUND populated)
+            month_mask = withdrawal_mask & (df['MONTH'] == month)
+            month_df_withdrawals = df[month_mask]
+            month_savings_withdrawals = sum_values_by_criteria(month_df_withdrawals, 'VALUE', VALUE_CONDITION='> 0')
+            
+            # Net savings
+            month_net_savings = month_savings_deposits - month_savings_withdrawals
+            
             month_investments = abs(sum_values_by_criteria(df, 'VALUE', CATEGORY=investing_cats, MONTH=month))
             
-            # Calculate monthly ratios
-            month_savings_ratio = (month_savings / month_income) if month_income > 0 else 0
+            # Calculate monthly ratios (prevent division by zero)
+            month_savings_ratio = (month_net_savings / month_income) if month_income > 0 else 0
             month_investment_ratio = (month_investments / month_income) if month_income > 0 else 0
             
             monthly_data.append({
                 'Month': month,
-                'Savings': month_savings,
+                'Savings': month_net_savings,
+                'Savings Deposits': month_savings_deposits,
+                'Savings Withdrawals': month_savings_withdrawals,
                 'Investments': month_investments,
                 'Savings Ratio': month_savings_ratio * 100,  # Convert to percentage
                 'Investment Ratio': month_investment_ratio * 100  # Convert to percentage
@@ -138,17 +172,19 @@ def update_savings_view(active_tab):
         monthly_df = pd.DataFrame(monthly_data)
         
         # Calculate averages
-        active_months = np.sum((monthly_df['Savings'] > 0) | (monthly_df['Investments'] > 0))
-        monthly_savings_avg = total_savings / active_months if active_months > 0 else 0
-        monthly_investments_avg = total_investments / active_months if active_months > 0 else 0
+        active_months = np.sum((monthly_df['Savings'] != 0) | (monthly_df['Investments'] > 0))
+        active_months = max(active_months, 1)  # Avoid division by zero
+        monthly_savings_avg = total_savings / active_months
+        monthly_investments_avg = total_investments / active_months
         
-        # Create cumulative data
+        # Create cumulative data with net savings
         monthly_df['Cumulative Savings'] = monthly_df['Savings'].cumsum()
         monthly_df['Cumulative Investments'] = monthly_df['Investments'].cumsum()
         monthly_df['Total Wealth'] = monthly_df['Cumulative Savings'] + monthly_df['Cumulative Investments']
         
         # Calculate month-over-month changes
         monthly_df['MoM Growth'] = monthly_df['Total Wealth'].pct_change() * 100
+        monthly_df['MoM Growth'] = monthly_df['MoM Growth'].fillna(0)  # Replace NaN with 0 for first month
         
         # Create charts
         fig1 = create_monthly_chart(monthly_df)
@@ -165,20 +201,39 @@ def update_savings_view(active_tab):
         )
         
     except Exception as e:
-        print(f"Error updating savings view: {e}")
+        print(f"Error updating savings view: {str(e)}")
+        import traceback
+        traceback.print_exc()
         empty_card = create_stat_card("Error", 0, "danger")
-        return {}, {}, {}, {}, empty_card, empty_card, empty_card, empty_card
+        empty_figure = go.Figure()
+        empty_figure.update_layout(
+            paper_bgcolor=CHART_THEME['bgcolor'],
+            plot_bgcolor=CHART_THEME['bgcolor']
+        )
+        return (
+            empty_figure, empty_figure, empty_figure, empty_figure, 
+            empty_card, empty_card, empty_card, empty_card
+        )
 
 def create_monthly_chart(df):
     """Create monthly savings and investments comparison chart."""
     fig = go.Figure()
     
-    # Add savings bars
+    # Add savings bars - now represents net savings (deposits minus withdrawals)
     fig.add_trace(go.Bar(
-        name='Savings',
+        name='Net Savings',
         x=df['Month'],
         y=df['Savings'],
         marker_color='rgb(46, 204, 113)'
+    ))
+    
+    # Add withdrawal indicators as a separate series
+    fig.add_trace(go.Bar(
+        name='Withdrawals',
+        x=df['Month'],
+        y=df['Savings Withdrawals'],
+        marker_color='rgb(231, 76, 60)',
+        visible='legendonly'  # Hidden by default
     ))
     
     # Add investment bars
@@ -285,7 +340,7 @@ def create_cumulative_chart(df):
     """Create stacked area chart showing cumulative growth."""
     fig = go.Figure()
     
-    # Add Savings area
+    # Add Savings area - now using the net cumulative value that accounts for withdrawals
     fig.add_trace(go.Scatter(
         x=df['Month'],
         y=df['Cumulative Savings'],
@@ -308,6 +363,24 @@ def create_cumulative_chart(df):
         stackgroup='one',
         hovertemplate="<b>Investments</b>: %{y:,.0f} Kč<extra></extra>"
     ))
+    
+    # Add withdrawal markers - be more defensive with filtering
+    withdrawal_df = df[df['Savings Withdrawals'] > 0]
+    if not withdrawal_df.empty:
+        fig.add_trace(go.Scatter(
+            x=withdrawal_df['Month'],
+            y=withdrawal_df['Cumulative Savings'],
+            name='Withdrawals',
+            mode='markers',
+            marker=dict(
+                symbol='triangle-down',
+                size=10,
+                color='rgb(231, 76, 60)',
+                line=dict(width=1, color='white')
+            ),
+            hovertemplate="<b>Withdrawal</b>: %{customdata:,.0f} Kč<extra></extra>",
+            customdata=withdrawal_df['Savings Withdrawals']
+        ))
     
     fig.update_layout(
         paper_bgcolor='rgba(0,0,0,0)',

@@ -12,12 +12,10 @@ import time
 from typing import Dict, Any, Optional, Tuple, List, Callable
 import json
 import os
-import backoff
-import requests.exceptions
 import functools
 import logging
-from http.client import RemoteDisconnected
-from socket import error as SocketError
+
+TOKEN_FILE_PATH = './tokens/new-project-01-449515-0a3860dea29d.json'
 
 # Default cache settings
 DEFAULT_CACHE_DURATION = 300  # Default cache duration in seconds (5 minutes)
@@ -294,7 +292,7 @@ def get_transactions(spreadsheet_name: str, worksheet_name: str) -> list:
         # If not in cache or cache disabled, fetch from sheets
         scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
         creds = ServiceAccountCredentials.from_json_keyfile_name(
-            './tokens/new-project-01-449515-0a3860dea29d.json', scope)
+            TOKEN_FILE_PATH, scope)
         client = gspread.authorize(creds)
         
         # Use retry-enabled fetch function
@@ -370,7 +368,7 @@ def get_worksheet(spreadsheet_name: str, worksheet_name: str,
     try:
         # If not in cache or cache disabled, fetch from sheets
         scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-        creds = ServiceAccountCredentials.from_json_keyfile_name('./tokens/new-project-01-449515-0a3860dea29d.json', scope)
+        creds = ServiceAccountCredentials.from_json_keyfile_name(TOKEN_FILE_PATH, scope)
         client = gspread.authorize(creds)
         sheet = client.open(spreadsheet_name)
         worksheet = sheet.worksheet(worksheet_name)
