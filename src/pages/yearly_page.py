@@ -63,7 +63,6 @@ layout = dbc.Container([
         dbc.Col([
             dbc.Card([
                 dbc.CardBody([
-                    html.H4("Expense Trends", className="text-center mb-4"),
                     dbc.Spinner(
                         dcc.Graph(
                             id='expense-trend-chart',
@@ -77,7 +76,6 @@ layout = dbc.Container([
         dbc.Col([
             dbc.Card([
                 dbc.CardBody([
-                    html.H4("Monthly Financial Summary", className="text-center mb-4"),
                     dbc.Spinner(
                         dcc.Graph(
                             id='monthly-summary-chart',
@@ -96,8 +94,6 @@ layout = dbc.Container([
         dbc.Col([
             dbc.Card([
                 dbc.CardBody([
-
-                    html.H4("Monthly Income", className="text-center mb-4"),
                     dbc.Spinner(
                         dcc.Graph(
                             id='monthly-income-chart',
@@ -111,7 +107,6 @@ layout = dbc.Container([
         dbc.Col([
             dbc.Card([
                 dbc.CardBody([
-                    html.H4("Income Sources", className="text-center mb-4"),
                     dbc.Spinner(
                         dcc.Graph(
                             id='income-distribution-chart',
@@ -509,9 +504,9 @@ def create_monthly_summary_chart(df, income_cats, expense_cats, saving_cats, inv
         hovertemplate='%{x}<br>Cashflow: %{y:,.0f} Kč<extra></extra>'
     ))
     
-    # Use default height if none provided
+    # Use significantly increased height
     if height is None:
-        height = CHART_THEME['height']
+        height = CHART_THEME['height'] + 175  # Increased to add significant more height
     
     fig.update_layout(
         title='Monthly Financial Summary',
@@ -536,7 +531,8 @@ def create_monthly_summary_chart(df, income_cats, expense_cats, saving_cats, inv
             showgrid=True,
             gridcolor=CHART_THEME['grid_color'],
             tickfont=dict(color=CHART_THEME['font_color']),
-            tickformat=',.0f'
+            tickformat=',.0f',
+            dtick=5000  # Changed from 2500 to 5000 for less frequent ticks
         ),
         legend=dict(
             orientation="h",
@@ -572,9 +568,9 @@ def create_expense_trend(df, expense_cats, height=None):
         mode='lines+markers'
     )
     
-    # Use default height if none provided
+    # Use significantly increased height for this chart
     if height is None:
-        height = CHART_THEME['height']
+        height = CHART_THEME['height'] + 175  # Increased to add significant more height
     
     fig.update_layout(
         paper_bgcolor=CHART_THEME['paper_bgcolor'],
@@ -586,7 +582,7 @@ def create_expense_trend(df, expense_cats, height=None):
         height=height,
         xaxis=dict(
             title='Month',
-            title_font=dict(color=CHART_THEME['font_color']),  # Explicitly setting title font color to white
+            title_font=dict(color=CHART_THEME['font_color']),
             tickangle=45,
             showgrid=True,
             gridcolor=CHART_THEME['grid_color'],
@@ -594,11 +590,12 @@ def create_expense_trend(df, expense_cats, height=None):
         ),
         yaxis=dict(
             title='Amount (Kč)',
-            title_font=dict(color=CHART_THEME['font_color']),  # Explicitly setting title font color to white
+            title_font=dict(color=CHART_THEME['font_color']),
             showgrid=True,
             gridcolor=CHART_THEME['grid_color'],
             tickfont=dict(color=CHART_THEME['font_color']),
-            tickformat=',.0f'
+            tickformat=',.0f',
+            dtick=2500  # Keeping finer tick spacing (2500) for expense trends
         )
     )
     return fig

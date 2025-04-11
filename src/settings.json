@@ -1,7 +1,7 @@
 {
     "cache_enabled": true,
     "cache_duration": 300,
-    "prefetch_enabled": false,
+    "prefetch_enabled": true,
     "debug_mode": false,
     "use_fundamental_expenses": true
 }
