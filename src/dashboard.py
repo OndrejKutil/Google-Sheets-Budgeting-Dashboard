@@ -9,7 +9,8 @@ import pandas as pd
 from data_fetch import get_transactions
 from get_categories import get_all_categories_api
 from functools import lru_cache
-from layouts.navbar import navbar  # Import the improved navbar component
+from layouts.navbar import navbar
+import os
 
 # Configure logger to only log to file, not console
 logger = logging.getLogger("budget_app.dashboard")
@@ -32,7 +33,8 @@ app = dash.Dash(
     suppress_callback_exceptions=True,
     meta_tags=[
         {"name": "viewport", "content": "width=device-width, initial-scale=1"}
-    ]
+    ],
+    assets_folder=os.path.join(os.path.dirname(os.path.abspath(__file__)), 'assets')  # Set assets folder correctly
 )
 
 # Cache data fetching

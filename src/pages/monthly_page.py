@@ -6,7 +6,6 @@ import pandas as pd
 from data_fetch import get_transactions
 from get_categories import get_all_categories_api
 from analysis import sum_values_by_criteria, sum_expenses_by_category, calculate_expense_ratio
-from functools import lru_cache
 from styles.theme import COLORS, TEXT_STYLES, CHART_THEME
 from styles.common_styles import (
     CARD_STYLE, DROPDOWN_STYLE, CONTAINER_STYLE, 
@@ -67,6 +66,7 @@ layout = dbc.Container([
                     dbc.Row([
                         dbc.Col(
                             html.Div([
+                                # Remove inline styles and move dbc-dark to parent div
                                 dcc.Dropdown(
                                     id='month-selector',
                                     options=[{'label': m, 'value': m} for m in [
@@ -74,10 +74,8 @@ layout = dbc.Container([
                                         'July', 'August', 'September', 'October', 'November', 'December'
                                     ]],
                                     value='January',
-                                    style=DROPDOWN_STYLE,
-                                    className='dbc-dark'  # Updated className
                                 )
-                            ], style={'color': COLORS['text']})
+                            ], className='dbc-dark', style={'color': COLORS['text']})
                         , width=10),
                         dbc.Col(dbc.Button("Update", id="update-button", color="primary"), width=2)
                     ])
@@ -104,16 +102,16 @@ layout = dbc.Container([
         ], width=3),
         dbc.Col([
             create_stat_card(
-                title="Net Income",
+                title="Cashflow",  # Changed from "Net Income"
                 color="savings",
-                id="net-income-value"
+                id="cashflow-value"  # Changed from "net-income-value"
             )
         ], width=3),
         dbc.Col([
             create_stat_card(
-                title="Expense Ratio",
-                color="expenses",
-                id="expense-ratio-value"
+                title="Profit",  # Changed from "Expense Ratio"
+                color="primary",  # Changed from "expenses"
+                id="profit-value"  # Changed from "expense-ratio-value"
             )
         ], width=3)
     ], className="mb-4"),
@@ -160,41 +158,14 @@ layout = dbc.Container([
                 ])
             ], style=CARD_STYLE)
         ], md=4)
-    ]),
-    
-    # Add custom CSS classes to the container
-    html.Div([
-        # ...existing monthly_layout content...
-    ], style={
-        '.dbc-dark .Select-control': {
-            'backgroundColor': '#2d2d2d',
-            'borderColor': '#404040'
-        },
-        '.dbc-dark .Select-menu-outer': {
-            'backgroundColor': 'white'
-        },
-        '.dbc-dark .Select-value-label': {
-            'color': 'white'
-        },
-        '.dbc-dark .Select--single > .Select-control .Select-value': {
-            'color': 'white'
-        },
-        '.dbc-dark .VirtualizedSelectOption': {
-            'backgroundColor': 'white',
-            'color': 'black'
-        },
-        '.dbc-dark .VirtualizedSelectFocusedOption': {
-            'backgroundColor': '#3498DB',
-            'color': 'white'
-        }
-    })
+    ])
 ], fluid=True, style={'backgroundColor': COLORS['background'], 'minHeight': '100vh'})
 
 @callback(
     [Output('income-value', 'children'),
      Output('expenses-value', 'children'),
-     Output('net-income-value', 'children'),
-     Output('expense-ratio-value', 'children'),
+     Output('cashflow-value', 'children'),
+     Output('profit-value', 'children'),
      Output('monthly-comparison', 'figure'),
      Output('expense-distribution', 'figure'),
      Output('daily-expenses', 'figure'),
@@ -216,8 +187,12 @@ def update_dashboard(selected_month):
         # Calculate metrics
         income = sum_values_by_criteria(month_data, 'VALUE', CATEGORY=income_cats)
         expenses = abs(sum_values_by_criteria(month_data, 'VALUE', CATEGORY=expense_cats))
-        net_income = income - expenses
-        expense_ratio = calculate_expense_ratio(month_data, income_cats, expense_cats)
+        investments = abs(sum_values_by_criteria(month_data, 'VALUE', CATEGORY=investing_cats))
+        savings = abs(sum_values_by_criteria(month_data, 'VALUE', CATEGORY=saving_cats))
+        
+        # Calculate new metrics
+        cashflow = income - expenses - investments - savings  # New cashflow calculation
+        profit = income - expenses - investments  # New profit calculation
         
         # Create comparison chart
         comparison_fig = create_comparison_chart(month_data, income_cats, expense_cats)
@@ -237,8 +212,8 @@ def update_dashboard(selected_month):
         return (
             f"{income:,.0f} Kč",
             f"{expenses:,.0f} Kč",
-            f"{net_income:,.0f} Kč",
-            f"{expense_ratio:.1%}",
+            f"{cashflow:,.0f} Kč",
+            f"{profit:,.0f} Kč",
             comparison_fig,
             distribution_fig,
             daily_fig,
@@ -268,7 +243,7 @@ def create_comparison_chart(df, income_cats, expense_cats):
         plot_bgcolor=CHART_THEME['bgcolor'],
         height=CHART_THEME['height'],
         font={'color': COLORS['text']},
-        showlegend=False,  # Removed legend since there's only one type of bar
+        showlegend=False,
         margin={'t': 30, 'b': 30, 'l': 30, 'r': 30},
         yaxis_title="Value (Kč)"
     )
@@ -302,7 +277,7 @@ def create_distribution_chart(df, expense_cats):
             x=1.1,
             font=dict(size=12)
         ),
-        margin=dict(t=30, b=30, l=30, r=120)  # Increased right margin for legend
+        margin=dict(t=30, b=30, l=30, r=120)
     )
     
     return fig
@@ -331,7 +306,8 @@ def create_daily_chart(df, expense_cats):
             x=daily_expenses.index,
             y=daily_expenses.values,
             marker_color=COLORS['expenses'],
-            hovertemplate="Day: %{x}<br>Total: %{y:,.0f} Kč<extra></extra>"
+            hovertemplate="Day: %{x}<br>Total: %{y:,.0f} Kč<extra></extra>",
+            name='Daily Expenses'
         )
     ])
     

@@ -1,0 +1,130 @@
+/* Base dropdown styles for both closed and open states - white bg, black text */
+.dbc-dark .Select-control,
+.dbc-dark .Select__control {
+    background-color: #ffffff !important;
+    border-color: #ced4da !important;
+    border-radius: 4px !important;
+    color: #000000 !important;
+}
+
+/* Ensure text is black when dropdown is closed - old version */
+.dbc-dark .Select-value-label,
+.dbc-dark .Select--single > .Select-control .Select-value {
+    color: #000000 !important;
+}
+
+/* Ensure text is black when dropdown is closed - new version */
+.dbc-dark .Select__single-value {
+    color: #000000 !important;
+}
+
+/* Make placeholder visible on white background */
+.dbc-dark .Select-placeholder,
+.dbc-dark .Select__placeholder {
+    color: #6c757d !important; /* Bootstrap secondary text color */
+}
+
+/* Make dropdown menu white with black text - old version */
+.dbc-dark .Select-menu-outer {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    border: 1px solid #ced4da !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+}
+
+/* Make dropdown menu white with black text - new version */
+.dbc-dark .Select__menu {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    border: 1px solid #ced4da !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+}
+
+/* Style the dropdown options - old version */
+.dbc-dark .Select-menu-outer .Select-option,
+.dbc-dark .VirtualizedSelectOption {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+}
+
+/* Style the dropdown options - new version */
+.dbc-dark .Select__menu .Select__option {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+}
+
+/* Style the dropdown options when hovered - old version */
+.dbc-dark .Select-menu-outer .Select-option:hover {
+    background-color: #f8f9fa !important;
+    color: #000000 !important;
+}
+
+/* Style the dropdown options when hovered - new version */
+.dbc-dark .Select__option--is-focused:not(.Select__option--is-selected) {
+    background-color: #f8f9fa !important;
+    color: #000000 !important;
+}
+
+/* Style the active/selected option in dropdown list - old version */
+.dbc-dark .Select-menu-outer .Select-option.is-selected,
+.dbc-dark .Select-menu-outer .Select-option.is-focused,
+.dbc-dark .VirtualizedSelectFocusedOption {
+    background-color: #e9ecef !important;
+    color: #000000 !important;
+}
+
+/* Style the active/selected option in dropdown list - new version */
+.dbc-dark .Select__option--is-selected {
+    background-color: #e9ecef !important;
+    color: #000000 !important;
+}
+
+/* Make input text black - old version */
+.dbc-dark .Select-input > input {
+    color: #000000 !important;
+}
+
+/* Make input text black - new version */
+.dbc-dark .Select__input input {
+    color: #000000 !important;
+}
+
+/* Support for React-Select v2+ dropdown arrow - black */
+.dbc-dark .Select__indicators {
+    color: #6c757d !important;
+}
+
+.dbc-dark .Select__indicator-separator {
+    background-color: #ced4da !important;
+}
+
+/* General styles for Dash's version of React-Select */
+.dash-dropdown .Select__control {
+    background-color: #ffffff !important;
+    border-color: #ced4da !important;
+    color: #000000 !important;
+}
+
+.dash-dropdown .Select__single-value {
+    color: #000000 !important;
+}
+
+.dash-dropdown .Select__menu {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+}
+
+.dash-dropdown .Select__option {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+}
+
+.dash-dropdown .Select__option--is-focused:not(.Select__option--is-selected) {
+    background-color: #f8f9fa !important;
+    color: #000000 !important;
+}
+
+.dash-dropdown .Select__option--is-selected {
+    background-color: #e9ecef !important;
+    color: #000000 !important;
+}
