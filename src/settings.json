@@ -2,5 +2,6 @@
     "cache_enabled": true,
     "cache_duration": 300,
     "prefetch_enabled": false,
-    "debug_mode": false
+    "debug_mode": false,
+    "use_fundamental_expenses": true
 }

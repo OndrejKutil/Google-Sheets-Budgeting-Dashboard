@@ -9,7 +9,8 @@ HELP_TEXTS = {
     'cache_enabled': "Enable storing data fetched from Google Sheets in memory to reduce API calls and speed up page loads.",
     'prefetch_enabled': "Preload commonly accessed data when the application starts to improve initial response times.",
     'cache_duration': "How long (in seconds) cached data remains valid before being refreshed from the source.",
-    'clear_cache': "Immediately remove all cached data from memory, forcing fresh data to be retrieved on next request."
+    'clear_cache': "Immediately remove all cached data from memory, forcing fresh data to be retrieved on next request.",
+    'use_fundamental_expenses': "When enabled, emergency fund targets are based only on essential expenses marked as 'Fundamental'. When disabled, all expenses are used."
 }
 
 layout = dbc.Container([
@@ -90,6 +91,24 @@ layout = dbc.Container([
             html.Div(id="cache-stats", className="text-muted"),
             
             html.Hr(),
+            html.H4("Emergency Fund Settings"),
+            dbc.Row([
+                dbc.Col([
+                    dbc.Form([
+                        dbc.Label("Use Only Fundamental Expenses for Targets"),
+                        dbc.Switch(
+                            id='fundamental-expenses-toggle',
+                            value=load_settings().get('use_fundamental_expenses', True),
+                            className="mb-2",
+                            persistence=True,
+                            persistence_type='session'
+                        ),
+                        dbc.FormText(HELP_TEXTS['use_fundamental_expenses'], color="muted"),
+                    ]),
+                ], width=12),
+            ], className="mb-3"),
+            
+            html.Hr(),
             html.H4("API Connection Test"),
             dbc.Button(
                 "Test Connection", 
@@ -110,14 +129,16 @@ layout = dbc.Container([
      Output("prefetch-toggle", "checked"),
      Output("cache-duration", "value"),
      Output("cache-status", "children"),
-     Output("setup-url", "refresh")],
+     Output("setup-url", "refresh"),
+     Output("fundamental-expenses-toggle", "checked")],  # Added new output
     [Input("cache-toggle", "value"),
      Input("prefetch-toggle", "value"),
-     Input("cache-duration", "value")],
+     Input("cache-duration", "value"),
+     Input("fundamental-expenses-toggle", "value")],  # Added new input
     prevent_initial_call=True
 )
-def update_cache_settings(cache_enabled, prefetch_enabled, cache_duration):
-    if cache_enabled is None or prefetch_enabled is None or cache_duration is None:
+def update_settings(cache_enabled, prefetch_enabled, cache_duration, use_fundamental_expenses):
+    if cache_enabled is None or prefetch_enabled is None or cache_duration is None or use_fundamental_expenses is None:
         raise PreventUpdate
     
     # Load current settings
@@ -127,6 +148,7 @@ def update_cache_settings(cache_enabled, prefetch_enabled, cache_duration):
     settings['cache_enabled'] = cache_enabled
     settings['prefetch_enabled'] = prefetch_enabled
     settings['cache_duration'] = cache_duration
+    settings['use_fundamental_expenses'] = use_fundamental_expenses  # Add new setting
     
     # Save the updated settings to file
     save_settings(settings)
@@ -136,15 +158,15 @@ def update_cache_settings(cache_enabled, prefetch_enabled, cache_duration):
         html.I(className="fas fa-check-circle me-2"),
         f"Settings saved. Cache {'enabled' if cache_enabled else 'disabled'}. " +
         f"Prefetching {'enabled' if prefetch_enabled else 'disabled'}. " +
-        f"Duration: {cache_duration} seconds."
+        f"Emergency fund calculation using {'fundamental' if use_fundamental_expenses else 'all'} expenses."
     ])
 
     # If prefetching is enabled, trigger prefetch on next load
     if prefetch_enabled:
         prefetch_common_data()
 
-    # Reload the page using JavaScript instead
-    return cache_enabled, prefetch_enabled, cache_duration, status_message, True
+    # Return all values including the new toggle state
+    return cache_enabled, prefetch_enabled, cache_duration, status_message, True, use_fundamental_expenses
 
 @callback(
     Output("cache-stats", "children"),
